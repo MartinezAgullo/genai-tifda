@@ -195,8 +195,6 @@ class TrackQuality(BaseModel):
     plot_count: Optional[int] = Field(None, description="Number of plots used to generate this track")
     ssr_code: Optional[str] = Field(None, description="SSR transponder code (if available)")
 
-
-
 class ASTERIXTrack(BaseModel):
     """Single radar track in ASTERIX format"""
     track_id: str = Field(..., description="Track identifier")

@@ -59,7 +59,7 @@ class EntityCOP(BaseModel):
     
     # Additional metadata (sensor-specific data)
     metadata: Dict = Field(
-        default_factory=dict, # <- can be None
+        default_factory=dict,
         description="Additional sensor-specific metadata"
     )
         
@@ -170,6 +170,6 @@ class COPSnapshot(BaseModel):
         description="Active threat assessments"
     )
     metadata: Dict = Field(
-        default_factory=dict, # Could be empty
+        default_factory=dict,
         description="Additional snapshot metadata"
     )

@@ -102,7 +102,6 @@ class OutgoingMessage(BaseModel):
     transmission_timestamp: Optional[datetime] = Field(None, description="When transmitted")
     transmission_status: Optional[str] = Field(None, description="Status: success, failed, pending")
     
-    # Nota: Los format adapters (que crearemos en nodes/) se encargarán de transformar EntityCOP → formato específico.
     class Config:
         json_schema_extra = {
             "examples": [
