@@ -1,0 +1,7 @@
+__init__.py
+*/__init__.py
+*/*/__init__.py
+*/*/*/__init__.py
+uv.lock
+.venv/
+.env
