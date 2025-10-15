@@ -7,7 +7,7 @@ Data structures for information dissemination decisions and outgoing messages.
 """
 
 from datetime import datetime
-from typing import List, Dict, Optional, Literal
+from typing import List, Dict, Optional, Literal, Any
 from pydantic import BaseModel, Field
 
 
@@ -77,37 +77,71 @@ class DisseminationDecision(BaseModel):
 class OutgoingMessage(BaseModel):
     """
     Formatted message ready for transmission to downstream system
+    
+    The 'content' field structure depends on 'format_type'
     """
     message_id: str = Field(..., description="Unique message identifier")
     decision_id: str = Field(..., description="Reference to DisseminationDecision")
     recipient_id: str = Field(..., description="Target system ID")
     
-    # Formatted content
-    format_type: str = Field(..., description="Format: link16, json, voice_text, etc.")
-    content: Dict = Field(..., description="Formatted message content")
+    # Format specification
+    format_type: Literal["link16", "json", "asterix", "cot", "voice_text", "custom"] = Field(
+        ...,
+        description="Output format type"
+    )
+    
+    # Flexible content - structure depends on format_type
+    content: Dict[str, Any] = Field(
+        ...,
+        description="Formatted message content (structure varies by format_type)"
+    )
     
     # Metadata
     timestamp: datetime = Field(..., description="When message was generated")
     transmitted: bool = Field(False, description="Whether message was sent")
     transmission_timestamp: Optional[datetime] = Field(None, description="When transmitted")
+    transmission_status: Optional[str] = Field(None, description="Status: success, failed, pending")
     
+    # Nota: Los format adapters (que crearemos en nodes/) se encargarán de transformar EntityCOP → formato específico.
     class Config:
         json_schema_extra = {
-            "example": {
-                "message_id": "msg_001",
-                "decision_id": "diss_001",
-                "recipient_id": "allied_bms_uk",
-                "format_type": "link16",
-                "content": {
-                    "tracks": [
-                        {"id": "T001", "lat": 39.5, "lon": -0.4, "classification": "unknown"}
-                    ]
+            "examples": [
+                {
+                    "message_id": "msg_001",
+                    "decision_id": "diss_001",
+                    "recipient_id": "allied_bms_uk",
+                    "format_type": "link16",
+                    "content": {
+                        "message_type": "J3.2",
+                        "track_number": "T001",
+                        "position": {"lat": 39.5, "lon": -0.4},
+                        "classification": "unknown"
+                    },
+                    "timestamp": "2025-10-15T14:30:05Z",
+                    "transmitted": False,
+                    "transmission_timestamp": None,
+                    "transmission_status": "pending"
                 },
-                "timestamp": "2025-10-15T14:30:05Z",
-                "transmitted": False
-            }
+                {
+                    "message_id": "msg_002",
+                    "format_type": "json",
+                    "content": {
+                        "entities": [
+                            {"id": "T001", "type": "aircraft", "location": {"lat": 39.5, "lon": -0.4}}
+                        ]
+                    }
+                },
+                {
+                    "message_id": "msg_003",
+                    "format_type": "voice_text",
+                    "content": {
+                        "text": "Attention all stations, unknown aircraft track T001 detected at grid 39.5 North, 0.4 West, altitude 5000 meters"
+                    }
+                }
+            ]
         }
 
+    
 
 class RecipientConfig(BaseModel):
     """

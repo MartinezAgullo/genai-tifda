@@ -59,10 +59,10 @@ class EntityCOP(BaseModel):
     
     # Additional metadata (sensor-specific data)
     metadata: Dict = Field(
-        default_factory=dict,
+        default_factory=dict, # <- can be None
         description="Additional sensor-specific metadata"
     )
-    
+        
     # Optional fields
     speed_kmh: Optional[float] = Field(None, description="Speed in km/h")
     heading: Optional[float] = Field(None, ge=0, le=360, description="Heading in degrees")
@@ -115,10 +115,11 @@ class ThreatAssessment(BaseModel):
     
     # Assessment details
     reasoning: str = Field(..., description="Natural language explanation of the threat")
-    recommended_actions: List[str] = Field(
-        default_factory=list,
-        description="List of recommended actions"
-    )
+    
+    # recommended_actions: List[str] = Field(
+    #     default_factory=list,
+    #     description="List of recommended actions"
+    # ) # Not recomending actions for now
     
     confidence: float = Field(
         ...,
@@ -130,8 +131,10 @@ class ThreatAssessment(BaseModel):
     timestamp: datetime = Field(..., description="When this assessment was made")
     
     # Geospatial context
-    distance_km: Optional[float] = Field(None, description="Distance between threat and asset")
-    
+    distances_to_affected_km: Optional[Dict[str, float]] = Field(
+        None,
+        description="Distance from threat to each affected entity (entity_id -> km)"
+    )    
     class Config:
         json_schema_extra = {
             "example": {
@@ -140,14 +143,12 @@ class ThreatAssessment(BaseModel):
                 "affected_entities": ["radar_base_01", "command_post_alpha"],
                 "threat_source_id": "aircraft_T001",
                 "reasoning": "Unknown aircraft approaching restricted airspace at high speed",
-                "recommended_actions": [
-                    "Alert air defense systems",
-                    "Attempt radio contact",
-                    "Notify allied command"
-                ],
                 "confidence": 0.85,
                 "timestamp": "2025-10-15T14:30:00Z",
-                "distance_km": 45.2
+                "distances_to_affected_km": {
+                    "radar_base_01": 45.2,
+                    "command_post_alpha": 52.8
+                }
             }
         }
 
@@ -169,6 +170,6 @@ class COPSnapshot(BaseModel):
         description="Active threat assessments"
     )
     metadata: Dict = Field(
-        default_factory=dict,
+        default_factory=dict, # Could be empty
         description="Additional snapshot metadata"
     )

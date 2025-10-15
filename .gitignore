@@ -1,7 +1,60 @@
-__init__.py
-*/__init__.py
-*/*/__init__.py
-*/*/*/__init__.py
-uv.lock
+# GenAI-Enabled Tactical Information Fusion and Dissemination Agent (TIFDA) .gitignore
+
+# --------------------
+# 1. Dependencies and Environments
+# --------------------
 .venv/
+env/
+venv/
+.direnv/
+.python-version
+
+# uv lock files (already included, keeping for completeness)
+uv.lock
+
+# Configuration and environment variables
 .env
+.env.local
+.flaskenv
+*.ini
+*.cfg
+
+# --------------------
+# 2. Python Bytecode, Build, and Cache Files
+# --------------------
+# Bytecode
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Build and Distribution files
+build/
+dist/
+.eggs/
+*.egg-info/
+.pytest_cache/
+
+# Coverage files
+.coverage
+htmlcov/
+.nox/
+
+# --------------------
+# 3. Operating System Files
+# --------------------
+# macOS files (already included, keeping for completeness)
+.DS_Store
+**/.DS_Store  # Ignore in all directories
+
+# --------------------
+# 4. Project-Specific Outputs (TIFDA)
+# --------------------
+# Compiled output directories
+/output/
+/data/  # Generally ignore large, derived data, or raw data you don't track
+
+# Temporary files (e.g., Gradio/UI caches, logs)
+*.log
+tmp/
+temp/
