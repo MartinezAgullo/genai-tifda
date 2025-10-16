@@ -10,10 +10,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 import yaml
 from pydantic import BaseModel, Field, field_validator
-from src.core.constants import SENSOR_TYPES
-from src.core.constants import OUTPUT_FORMATS
-
-
+from src.core.constants import SENSOR_TYPES, OUTPUT_FORMATS, ACCESS_LEVELS
 
 
 # ==================== CONFIGURATION MODELS ====================
@@ -34,7 +31,6 @@ class SensorConfig(BaseModel):
         return v
 
     enabled: bool = Field(True, description="Whether sensor is active")
-    classification_clearance: str = Field("UNCLASSIFIED", description="Max classification level")
     trusted: bool = Field(False, description="Whether sensor is fully trusted (skip some validation)")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional config")
 
@@ -43,7 +39,20 @@ class RecipientConfigModel(BaseModel):
     """Configuration for a downstream recipient"""
     recipient_id: str = Field(..., description="Unique identifier")
     recipient_type: str = Field(..., description="Type: bms, radio, etc.")
-    classification_clearance: str = Field(..., description="Max classification")
+    
+    # Access level instead of classification_clearance
+    access_level: str = Field(..., description="Recipient's access level")
+    
+    @field_validator("access_level")
+    @classmethod
+    def validate_access_level(cls, v: str) -> str:
+        """Validate access level against known levels"""
+        if v not in ACCESS_LEVELS:
+            raise ValueError(
+                f"Invalid access_level '{v}'. Must be one of: {ACCESS_LEVELS}"
+            )
+        return v
+    
     supported_formats: List[str] = Field(..., description="Supported output formats")
     
     @field_validator("supported_formats")
@@ -60,6 +69,12 @@ class RecipientConfigModel(BaseModel):
     connection_type: str = Field(..., description="mqtt, api, etc.")
     connection_config: Dict[str, Any] = Field(default_factory=dict)
     auto_disseminate: bool = Field(False, description="Auto-send without review")
+    
+    # Deception config for enemy_access
+    deception_config: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Deception configuration if access_level is enemy_access"
+    )
 
 
 class LLMConfig(BaseModel):

@@ -9,12 +9,13 @@ This module defines the controlled vocabularies used throughout TIFDA for:
 - Dimensional categorization (air/ground/sea/space/cyber)
 - Platform types (aircraft, vehicles, vessels, infrastructure)
 - Threat assessment levels
-- Security classifications
+- Security classifications and access control
 - Operational parameters
 
 References:
 - NATO APP-6E (Joint Military Symbology)
 - MIL-STD-2525D (US equivalent)
+- NATO Security Classification Policy
 """
 
 from typing import Literal
@@ -178,21 +179,214 @@ THREAT_LEVEL_PRIORITY = {
     "none": 1       # No identified threat
 }
 
-# ==================== CLASSIFICATION LEVELS (Security) ====================
+# ==================== CLASSIFICATION LEVELS (Information Sensitivity) ====================
 
-CLASSIFICATION_LEVELS = ["UNCLASSIFIED", "CONFIDENTIAL", "SECRET", "TOP_SECRET"]
+CLASSIFICATION_LEVELS = [
+    "TOP_SECRET",      # Exceptionally grave damage to national security if disclosed
+    "SECRET",          # Serious damage to national security if disclosed
+    "CONFIDENTIAL",    # Damage to national security if disclosed
+    "RESTRICTED",      # Undesirable effects if disclosed (NATO/EU standard)
+    "UNCLASSIFIED"     # No classification required (publicly releasable)
+]
 """
-Information security classification levels.
-Controls dissemination based on need-to-know and clearance.
+Information security classification levels (NATO/National standard).
+Determines data sensitivity, handling requirements, and dissemination controls.
+
+NATO Standard:
+- TOP SECRET: Exceptionally grave damage
+- SECRET: Serious damage
+- CONFIDENTIAL: Damage to national security
+- RESTRICTED: Undesirable effects (NATO specific, between CONFIDENTIAL and UNCLASSIFIED)
+- UNCLASSIFIED: Publicly releasable
+
+Note: US uses same levels except RESTRICTED (uses CONFIDENTIAL → UNCLASSIFIED directly).
 """
 
-# Classification hierarchy (for determining max level)
+# Classification hierarchy (for determining max level and access control)
 CLASSIFICATION_HIERARCHY = {
-    "UNCLASSIFIED": 1,
-    "CONFIDENTIAL": 2,
-    "SECRET": 3,
-    "TOP_SECRET": 4
+    "TOP_SECRET": 5,
+    "SECRET": 4,
+    "CONFIDENTIAL": 3,
+    "RESTRICTED": 2,
+    "UNCLASSIFIED": 1
 }
+
+# ==================== ACCESS LEVELS (Who can view information) ====================
+
+ACCESS_LEVELS = [
+    "top_secret_access",    # Can view TOP_SECRET and all below
+    "secret_access",        # Can view SECRET and all below
+    "confidential_access",  # Can view CONFIDENTIAL and all below
+    "restricted_access",    # Can view RESTRICTED and all below
+    "unclassified_access",  # Can view UNCLASSIFIED only (public access)
+    "enemy_access"          # Special: Receives controlled disinformation (honeypot)
+]
+"""
+Access levels for recipients (users, systems, allied forces).
+Determines what classification levels a recipient can view.
+
+Access control follows "read down" principle:
+- top_secret_access can read: TOP_SECRET, SECRET, CONFIDENTIAL, RESTRICTED, UNCLASSIFIED
+- secret_access can read: SECRET, CONFIDENTIAL, RESTRICTED, UNCLASSIFIED
+- confidential_access can read: CONFIDENTIAL, RESTRICTED, UNCLASSIFIED
+- restricted_access can read: RESTRICTED, UNCLASSIFIED
+- unclassified_access can read: UNCLASSIFIED only
+
+Special case: "enemy_access" is for deception operations (honeypot).
+Recipients with enemy_access receive mix of UNCLASSIFIED (real but low-value) 
+and fabricated information to mislead adversaries.
+"""
+
+ACCESS_LEVEL_HIERARCHY = {
+    "top_secret_access": 5,
+    "secret_access": 4,
+    "confidential_access": 3,
+    "restricted_access": 2,
+    "unclassified_access": 1,
+    "enemy_access": 0  # Below all - controlled information operations
+}
+
+# ==================== ACCESS CONTROL HELPERS ====================
+
+def can_access_classification(
+    access_level: str,
+    data_classification: str
+) -> bool:
+    """
+    Determine if an access level can view data with given classification.
+    
+    Implements "read down" access control: higher clearance can read lower classifications.
+    
+    Args:
+        access_level: Recipient's access level (e.g., "secret_access")
+        data_classification: Data's classification (e.g., "SECRET")
+        
+    Returns:
+        True if access is permitted, False otherwise
+        
+    Examples:
+        >>> can_access_classification("secret_access", "CONFIDENTIAL")
+        True  # SECRET clearance can read CONFIDENTIAL data
+        
+        >>> can_access_classification("confidential_access", "SECRET")
+        False  # CONFIDENTIAL clearance CANNOT read SECRET data
+        
+        >>> can_access_classification("enemy_access", "SECRET")
+        False  # Enemy never gets real classified data
+        
+        >>> can_access_classification("enemy_access", "UNCLASSIFIED")
+        True  # Enemy can get UNCLASSIFIED (or controlled leaks)
+    """
+    # Special case: enemy_access only gets UNCLASSIFIED or controlled disinformation
+    if access_level == "enemy_access":
+        return data_classification == "UNCLASSIFIED"
+    
+    # Normal access control: "read down" principle
+    access_rank = ACCESS_LEVEL_HIERARCHY.get(access_level, 0)
+    data_rank = CLASSIFICATION_HIERARCHY.get(data_classification, 999)
+    
+    # Can access if your clearance level >= data classification level
+    return access_rank >= data_rank
+
+
+def get_max_classification_for_access(access_level: str) -> str:
+    """
+    Get the highest classification level a recipient can view.
+    
+    Args:
+        access_level: Recipient's access level
+        
+    Returns:
+        Maximum classification level they can view
+        
+    Examples:
+        >>> get_max_classification_for_access("secret_access")
+        "SECRET"
+        
+        >>> get_max_classification_for_access("restricted_access")
+        "RESTRICTED"
+        
+        >>> get_max_classification_for_access("enemy_access")
+        "UNCLASSIFIED"
+    """
+    if access_level == "enemy_access":
+        return "UNCLASSIFIED"
+    
+    access_rank = ACCESS_LEVEL_HIERARCHY.get(access_level, 0)
+    
+    # Find classification with matching rank
+    for classification, rank in CLASSIFICATION_HIERARCHY.items():
+        if rank == access_rank:
+            return classification
+    
+    return "UNCLASSIFIED"  # Fallback to lowest classification
+
+
+def filter_entities_by_access(
+    entities: list,
+    access_level: str
+) -> list:
+    """
+    Filter entities based on recipient's access level.
+    
+    Removes entities that recipient doesn't have clearance to view.
+    
+    Args:
+        entities: List of EntityCOP objects
+        access_level: Recipient's access level
+        
+    Returns:
+        Filtered list of entities recipient is authorized to view
+        
+    Example:
+        >>> entities = [entity_ts, entity_secret, entity_unclass]
+        >>> filter_entities_by_access(entities, "secret_access")
+        [entity_secret, entity_unclass]  # TOP_SECRET entity filtered out
+    """
+    filtered = []
+    
+    for entity in entities:
+        # Get entity's information classification
+        # Default to UNCLASSIFIED if not specified
+        entity_classification = getattr(
+            entity, 
+            'information_classification', 
+            entity.metadata.get('information_classification', 'UNCLASSIFIED')
+        )
+        
+        if can_access_classification(access_level, entity_classification):
+            filtered.append(entity)
+    
+    return filtered
+
+
+def get_highest_classification(classifications: list[str]) -> str:
+    """
+    Get the highest classification level from a list.
+    
+    Args:
+        classifications: List of classification levels
+        
+    Returns:
+        Highest classification level
+        
+    Example:
+        >>> get_highest_classification(["SECRET", "UNCLASSIFIED", "CONFIDENTIAL"])
+        "SECRET"
+    """
+    if not classifications:
+        return "UNCLASSIFIED"
+    
+    max_rank = 0
+    highest = "UNCLASSIFIED"
+    
+    for classification in classifications:
+        rank = CLASSIFICATION_HIERARCHY.get(classification, 0)
+        if rank > max_rank:
+            max_rank = rank
+            highest = classification
+    
+    return highest
 
 # ==================== SENSOR TYPES ====================
 
@@ -270,7 +464,8 @@ HUMAN_REVIEW_TRIGGERS = {
     "top_secret_dissemination": True,  # TOP_SECRET data needs approval
     "low_confidence": 0.6,             # Confidence below this triggers review
     "first_contact": True,             # First time seeing entity/sensor type
-    "conflicting_sensors": True        # Multiple sensors disagree
+    "conflicting_sensors": True,       # Multiple sensors disagree
+    "enemy_access_transmission": True  # Deception ops need approval
 }
 """
 Conditions that trigger mandatory human-in-the-loop review.

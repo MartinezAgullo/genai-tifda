@@ -1,5 +1,3 @@
-# EntityCOP, ThreatAssessment
-
 """
 COP Entity Models
 =================
@@ -39,11 +37,18 @@ class EntityCOP(BaseModel):
     location: Location = Field(..., description="Current geographic location")
     timestamp: datetime = Field(..., description="When this information was recorded")
     
-    # Classification (in agreement to the APP-6A affiliation)
+    # Classification (IFF - Identification Friend or Foe)
     classification: Literal["friendly", "hostile", "neutral", "unknown"] = Field(
         "unknown",
-        description="IFF classification"
+        description="IFF classification (affiliation) - determines symbology color"
     )
+    
+    # Information Classification (Security level)
+    information_classification: Literal["TOP_SECRET", "SECRET", "CONFIDENTIAL", "RESTRICTED", "UNCLASSIFIED"] = Field(
+        "UNCLASSIFIED",
+        description="Security classification level of this entity's information (determines who can see it)"
+    )
+    
     confidence: float = Field(
         ...,
         ge=0.0,
@@ -62,7 +67,7 @@ class EntityCOP(BaseModel):
         default_factory=dict,
         description="Additional sensor-specific metadata"
     )
-        
+    
     # Optional fields
     speed_kmh: Optional[float] = Field(None, description="Speed in km/h")
     heading: Optional[float] = Field(None, ge=0, le=360, description="Heading in degrees")
@@ -76,6 +81,7 @@ class EntityCOP(BaseModel):
                 "location": {"lat": 39.5, "lon": -0.4, "alt": 5000},
                 "timestamp": "2025-10-15T14:30:00Z",
                 "classification": "unknown",
+                "information_classification": "SECRET",
                 "confidence": 0.9,
                 "source_sensors": ["radar_01"],
                 "metadata": {
@@ -116,11 +122,6 @@ class ThreatAssessment(BaseModel):
     # Assessment details
     reasoning: str = Field(..., description="Natural language explanation of the threat")
     
-    # recommended_actions: List[str] = Field(
-    #     default_factory=list,
-    #     description="List of recommended actions"
-    # ) # Not recomending actions for now
-    
     confidence: float = Field(
         ...,
         ge=0.0,
@@ -134,7 +135,8 @@ class ThreatAssessment(BaseModel):
     distances_to_affected_km: Optional[Dict[str, float]] = Field(
         None,
         description="Distance from threat to each affected entity (entity_id -> km)"
-    )    
+    )
+    
     class Config:
         json_schema_extra = {
             "example": {

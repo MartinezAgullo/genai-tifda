@@ -9,7 +9,7 @@ Protects against:
 - Malformed data structures
 - Unauthorized sensors
 - Invalid coordinates
-- Classification violations
+- Classification/access control violations
 """
 
 import re
@@ -22,7 +22,8 @@ from src.core.constants import (
     SENSOR_TYPES,
     CLASSIFICATIONS,
     CLASSIFICATION_LEVELS,
-    CLASSIFICATION_HIERARCHY
+    ACCESS_LEVELS,
+    can_access_classification
 )
 from src.models import SensorMessage, EntityCOP
 
@@ -328,7 +329,7 @@ def _check_classification_validity(classification: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def _check_classification_level_validity(level: str) -> Tuple[bool, str]:
+def _check_information_classification_validity(level: str) -> Tuple[bool, str]:
     """
     Validate security classification level.
     
@@ -340,6 +341,22 @@ def _check_classification_level_validity(level: str) -> Tuple[bool, str]:
     """
     if level not in CLASSIFICATION_LEVELS:
         return False, f"Invalid classification level '{level}'. Must be one of: {CLASSIFICATION_LEVELS}"
+    
+    return True, ""
+
+
+def _check_access_level_validity(access_level: str) -> Tuple[bool, str]:
+    """
+    Validate access level.
+    
+    Args:
+        access_level: Access level string
+        
+    Returns:
+        (is_valid, error_message)
+    """
+    if access_level not in ACCESS_LEVELS:
+        return False, f"Invalid access level '{access_level}'. Must be one of: {ACCESS_LEVELS}"
     
     return True, ""
 
@@ -420,8 +437,15 @@ def validate_entity(entity: EntityCOP) -> Tuple[bool, str]:
         (is_valid, error_message)
     """
     
-    # Check classification
+    # Check IFF classification
     is_valid, error = _check_classification_validity(entity.classification)
+    if not is_valid:
+        return False, f"[FIREWALL] {error}"
+    
+    # Check information classification
+    is_valid, error = _check_information_classification_validity(
+        entity.information_classification
+    )
     if not is_valid:
         return False, f"[FIREWALL] {error}"
     
@@ -456,46 +480,69 @@ def validate_entity(entity: EntityCOP) -> Tuple[bool, str]:
 @traceable(name="firewall_validate_dissemination")
 def validate_dissemination(
     recipient_id: str,
-    classification_level: str,
-    recipient_clearance: str,
-    information_subset: List[str]
+    recipient_access_level: str,
+    highest_classification_sent: str,
+    information_subset: List[str],
+    is_deception: bool = False
 ) -> Tuple[bool, str]:
     """
     Validate dissemination decision for security compliance.
     
     Ensures:
     - Classification level is valid
-    - Recipient has sufficient clearance
+    - Access level is valid
+    - Recipient has sufficient access level for data classification
     - Information subset is not empty
+    - Special handling for enemy_access (honeypot)
     
     Args:
         recipient_id: Recipient identifier
-        classification_level: Classification of data being sent
-        recipient_clearance: Recipient's clearance level
+        recipient_access_level: Recipient's access level
+        highest_classification_sent: Highest classification in transmission
         information_subset: List of entity IDs being shared
+        is_deception: Whether this is disinformation for enemy
         
     Returns:
         (is_valid, error_message)
     """
     
     # Validate classification level
-    is_valid, error = _check_classification_level_validity(classification_level)
+    is_valid, error = _check_information_classification_validity(highest_classification_sent)
     if not is_valid:
         return False, f"[FIREWALL] {error}"
     
-    # Validate recipient clearance
-    is_valid, error = _check_classification_level_validity(recipient_clearance)
+    # Validate access level
+    is_valid, error = _check_access_level_validity(recipient_access_level)
     if not is_valid:
-        return False, f"[FIREWALL] Invalid recipient clearance: {error}"
+        return False, f"[FIREWALL] {error}"
     
-    # Check clearance hierarchy
-    data_level = CLASSIFICATION_HIERARCHY.get(classification_level, 0)
-    clearance_level = CLASSIFICATION_HIERARCHY.get(recipient_clearance, 0)
+    # Special case: enemy_access
+    if recipient_access_level == "enemy_access":
+        # Enemy must ONLY receive UNCLASSIFIED data
+        if highest_classification_sent != "UNCLASSIFIED":
+            if not is_deception:
+                return False, (
+                    f"[FIREWALL] CRITICAL: Attempting to send {highest_classification_sent} "
+                    f"data to enemy_access recipient WITHOUT deception flag! "
+                    f"This could be a data leak!"
+                )
+            # If is_deception=True, this is intentional disinformation
+            # Log it but allow (will be audited)
+            print(f"⚠️ [FIREWALL] Deception operation: Sending {highest_classification_sent} "
+                  f"(fake) data to {recipient_id}")
+        
+        # Validate information subset for enemy
+        if not information_subset or len(information_subset) == 0:
+            return False, "[FIREWALL] Information subset cannot be empty"
+        
+        return True, ""
     
-    if clearance_level < data_level:
+    # Normal access control check (read-down principle)
+    if not can_access_classification(recipient_access_level, highest_classification_sent):
         return False, (
-            f"[FIREWALL] Classification violation: "
-            f"Cannot send {classification_level} data to recipient with {recipient_clearance} clearance"
+            f"[FIREWALL] Access control violation: "
+            f"Recipient with '{recipient_access_level}' cannot access "
+            f"'{highest_classification_sent}' data"
         )
     
     # Validate information subset
@@ -519,7 +566,8 @@ def get_firewall_stats() -> Dict[str, int]:
         "injection_patterns": len(PROMPT_INJECTION_PATTERNS),
         "suspicious_keywords": len(SUSPICIOUS_KEYWORDS),
         "sensor_types": len(SENSOR_TYPES),
-        "classification_levels": len(CLASSIFICATION_LEVELS)
+        "classification_levels": len(CLASSIFICATION_LEVELS),
+        "access_levels": len(ACCESS_LEVELS)
     }
 
 
@@ -591,6 +639,7 @@ def test_firewall():
         location=Location(lat=39.5, lon=-0.4, alt=5000),
         timestamp=datetime.utcnow(),
         classification="unknown",
+        information_classification="SECRET",
         confidence=0.9,
         source_sensors=["radar_01"]
     )
@@ -599,15 +648,68 @@ def test_firewall():
     if error:
         print(f"   Error: {error}")
     
-    # Test 5: Dissemination clearance violation
-    print("\n5. Testing dissemination clearance violation...")
+    # Test 5: Access control - valid
+    print("\n5. Testing valid access control...")
     is_valid, error = validate_dissemination(
         recipient_id="allied_bms_uk",
-        classification_level="TOP_SECRET",
-        recipient_clearance="CONFIDENTIAL",
-        information_subset=["entity_001"]
+        recipient_access_level="secret_access",
+        highest_classification_sent="CONFIDENTIAL",
+        information_subset=["entity_001"],
+        is_deception=False
+    )
+    print(f"   Result: {'✅ PASS' if is_valid else '❌ FAIL'}")
+    if error:
+        print(f"   Error: {error}")
+    
+    # Test 6: Access control violation
+    print("\n6. Testing access control violation...")
+    is_valid, error = validate_dissemination(
+        recipient_id="allied_bms_uk",
+        recipient_access_level="confidential_access",
+        highest_classification_sent="TOP_SECRET",
+        information_subset=["entity_001"],
+        is_deception=False
     )
     print(f"   Result: {'✅ BLOCKED' if not is_valid else '❌ PASS (should block!)'}")
+    if error:
+        print(f"   Error: {error}")
+    
+    # Test 7: Enemy access - valid (UNCLASSIFIED)
+    print("\n7. Testing enemy_access with UNCLASSIFIED...")
+    is_valid, error = validate_dissemination(
+        recipient_id="adversary_monitor",
+        recipient_access_level="enemy_access",
+        highest_classification_sent="UNCLASSIFIED",
+        information_subset=["entity_public"],
+        is_deception=False
+    )
+    print(f"   Result: {'✅ PASS' if is_valid else '❌ FAIL'}")
+    if error:
+        print(f"   Error: {error}")
+    
+    # Test 8: Enemy access - deception operation
+    print("\n8. Testing enemy_access with deception (SECRET fake data)...")
+    is_valid, error = validate_dissemination(
+        recipient_id="adversary_monitor",
+        recipient_access_level="enemy_access",
+        highest_classification_sent="SECRET",
+        information_subset=["fake_entity_001"],
+        is_deception=True  # Intentional disinformation
+    )
+    print(f"   Result: {'✅ PASS (deception op)' if is_valid else '❌ FAIL'}")
+    if error:
+        print(f"   Error: {error}")
+    
+    # Test 9: Enemy access - CRITICAL: classified data without deception flag
+    print("\n9. Testing enemy_access with SECRET (NO deception flag - SHOULD BLOCK)...")
+    is_valid, error = validate_dissemination(
+        recipient_id="adversary_monitor",
+        recipient_access_level="enemy_access",
+        highest_classification_sent="SECRET",
+        information_subset=["entity_001"],
+        is_deception=False  # This is a LEAK!
+    )
+    print(f"   Result: {'✅ BLOCKED' if not is_valid else '❌ CRITICAL LEAK!'}")
     if error:
         print(f"   Error: {error}")
     

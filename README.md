@@ -22,6 +22,10 @@ Its main functions are:
 | **Dependencies** | Managed using UV. |
 | **Visualization** | Future development (to do) includes a COP Visualization Module (using Folium) to display the COP with NATO Joint Military Symbology (APP-6E) |
 
+- Security against prompt injection
+- Classification and access control system. Use of honehypots for enemies.
+
+
 * * * * *
 
 ## 📂 Project Scaffolding

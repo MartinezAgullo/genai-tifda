@@ -1,4 +1,4 @@
-# TIFDA Security Layer Summary
+# TIFDA Security Layer
 
 The TIFDA Security Layer provides **multi-layer security validation** using the `firewall.py` component to protect against malicious input and policy violations in a data processing pipeline.
 
