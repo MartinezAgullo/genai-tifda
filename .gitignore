@@ -58,3 +58,5 @@ htmlcov/
 *.log
 tmp/
 temp/
+
+tests

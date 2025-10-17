@@ -2,39 +2,40 @@
 TIFDA Data Models
 =================
 
-Pydantic models for all data structures in the system.
+Pydantic models for all TIFDA data structures.
 """
 
 # COP entities
-from .cop_entities import (
+from src.models.cop_entities import (
     Location,
     EntityCOP,
     ThreatAssessment,
     COPSnapshot
 )
 
-# Sensor formats
-from .sensor_formats import (
-    SensorMessage,
-    FileReference,
-    ASTERIXTrack,
-    ASTERIXMessage,
-    DroneData,
-    RadioData,
-    ManualReport
-)
-
 # Dissemination
-from .dissemination import (
+from src.models.dissemination import (
     DisseminationDecision,
     OutgoingMessage,
     RecipientConfig
 )
 
 # Human feedback
-from .human_feedback import (
+from src.models.human_feedback import (
     HumanFeedback,
     ReviewDecision
+)
+
+# Sensor formats
+from src.models.sensor_formats import (
+    SensorMessage,
+    FileReference,
+    TrackQuality,
+    ASTERIXTrack,
+    ASTERIXMessage,
+    DroneData,
+    RadioData,
+    ManualReport
 )
 
 __all__ = [
@@ -44,21 +45,22 @@ __all__ = [
     "ThreatAssessment",
     "COPSnapshot",
     
-    # Sensors
-    "SensorMessage",
-    "FileReference",
-    "ASTERIXTrack",
-    "ASTERIXMessage",
-    "DroneData",
-    "RadioData",
-    "ManualReport",
-    
     # Dissemination
     "DisseminationDecision",
     "OutgoingMessage",
     "RecipientConfig",
     
-    # Feedback
+    # Human feedback
     "HumanFeedback",
     "ReviewDecision",
+    
+    # Sensor formats
+    "SensorMessage",
+    "FileReference",
+    "TrackQuality",
+    "ASTERIXTrack",
+    "ASTERIXMessage",
+    "DroneData",
+    "RadioData",
+    "ManualReport",
 ]
