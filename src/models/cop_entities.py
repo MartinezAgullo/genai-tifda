@@ -10,6 +10,7 @@ tracked in the tactical environment.
 from datetime import datetime
 from typing import Dict, List, Optional, Literal
 from pydantic import BaseModel, Field, field_validator
+from typing import Any
 
 
 class Location(BaseModel):
@@ -72,6 +73,90 @@ class EntityCOP(BaseModel):
     speed_kmh: Optional[float] = Field(None, description="Speed in km/h")
     heading: Optional[float] = Field(None, ge=0, le=360, description="Heading in degrees")
     comments: Optional[str] = Field(None, description="Human-readable comments")
+
+    def to_mapa_punto_interes(self) -> Dict[str, Any]:
+        """
+        Convert EntityCOP to mapa-puntos-interes format
+        
+        Returns:
+            Dict ready for POST /api/puntos
+        """
+        # Map TIFDA entity_type to mapa categoria
+        entity_type_to_categoria = {
+            "aircraft": "Avion",
+            "fighter": "Avion",
+            "bomber": "Avion",
+            "transport": "Avion",
+            "helicopter": "Avion",
+            "uav": "Drone",
+            "missile": "Otro",
+            "tank": "Tanque",
+            "apc": "Vehiculo",
+            "ifv": "Vehiculo",
+            "artillery": "Artilleria",
+            "infantry": "Infanteria",
+            "command_post": "Centro de Mando",
+            "radar_site": "Otro",
+            "infrastructure": "Otro",
+            "building": "Otro",
+            "bridge": "Otro",
+            "base": "BSM",
+            "ground_vehicle": "Vehiculo",
+            "ship": "Otro",
+            "carrier": "Otro",
+            "destroyer": "Otro",
+            "frigate": "Otro",
+            "corvette": "Otro",
+            "patrol_boat": "Otro",
+            "submarine": "Otro",
+            "boat": "Otro",
+            "satellite": "Otro",
+            "cyber_node": "Otro",
+            "person": "Infanteria",
+            "event": "Otro",
+            "unknown": "Otro"
+        }
+        
+        categoria = entity_type_to_categoria.get(self.entity_type, "Otro")
+        
+        return {
+            "nombre": self.entity_id,
+            "descripcion": self.comments or f"{self.entity_type} - {self.classification}",
+            "categoria": categoria,
+            "ciudad": "Unknown",
+            "provincia": "Unknown",
+            "elemento_identificado": self.entity_id,
+            "activo": True,
+            "tipo_elemento": self.entity_type,
+            "prioridad": self._calculate_priority(),
+            "observaciones": self._build_observations(),
+            "longitud": self.location.lon,
+            "latitud": self.location.lat
+        }
+    
+    def _calculate_priority(self) -> int:
+        """Calculate priority 0-10 based on threat level and classification"""
+        priority_map = {
+            "hostile": 9,
+            "unknown": 6,
+            "neutral": 3,
+            "friendly": 2
+        }
+        return priority_map.get(self.classification, 5)
+    
+    def _build_observations(self) -> str:
+        """Build observation text from metadata"""
+        obs = []
+        obs.append(f"Classification: {self.classification}")
+        obs.append(f"Info Level: {self.information_classification}")
+        obs.append(f"Confidence: {self.confidence:.2f}")
+        obs.append(f"Sensors: {', '.join(self.source_sensors)}")
+        if self.speed_kmh:
+            obs.append(f"Speed: {self.speed_kmh} km/h")
+        if self.heading:
+            obs.append(f"Heading: {self.heading}°")
+        return " | ".join(obs)
+    
     
     class Config:
         json_schema_extra = {

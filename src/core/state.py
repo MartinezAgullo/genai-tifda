@@ -8,7 +8,7 @@ This is the main data structure that flows through all graph nodes.
 
 from datetime import datetime
 from typing import Annotated, Dict, List, Optional, Any
-from typing_extensions import TypedDict
+from typing import TypedDict
 import operator
 from src.core.constants import CLASSIFICATIONS
 from src.core.constants import ENTITY_TYPES

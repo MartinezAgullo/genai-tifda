@@ -2,13 +2,12 @@
 TIFDA Configuration Management
 ===============================
 
-Handles loading and validation of configuration from YAML files.
+Simple configuration with sensible defaults.
+Can be overridden programmatically if needed.
 """
 
-import os
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-import yaml
+from typing import Dict, Any, Optional, List, Literal
 from pydantic import BaseModel, Field, field_validator
 from src.core.constants import SENSOR_TYPES, OUTPUT_FORMATS, ACCESS_LEVELS
 
@@ -31,7 +30,7 @@ class SensorConfig(BaseModel):
         return v
 
     enabled: bool = Field(True, description="Whether sensor is active")
-    trusted: bool = Field(False, description="Whether sensor is fully trusted (skip some validation)")
+    trusted: bool = Field(False, description="Whether sensor is fully trusted")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional config")
 
 
@@ -39,8 +38,6 @@ class RecipientConfigModel(BaseModel):
     """Configuration for a downstream recipient"""
     recipient_id: str = Field(..., description="Unique identifier")
     recipient_type: str = Field(..., description="Type: bms, radio, etc.")
-    
-    # Access level instead of classification_clearance
     access_level: str = Field(..., description="Recipient's access level")
     
     @field_validator("access_level")
@@ -69,8 +66,6 @@ class RecipientConfigModel(BaseModel):
     connection_type: str = Field(..., description="mqtt, api, etc.")
     connection_config: Dict[str, Any] = Field(default_factory=dict)
     auto_disseminate: bool = Field(False, description="Auto-send without review")
-    
-    # Deception config for enemy_access
     deception_config: Optional[Dict[str, Any]] = Field(
         None,
         description="Deception configuration if access_level is enemy_access"
@@ -78,28 +73,37 @@ class RecipientConfigModel(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    """LLM configuration (model-agnostic)"""
+    """LLM configuration"""
     provider: str = Field("openai", description="LLM provider: openai, anthropic, ollama")
     model: str = Field("gpt-4o", description="Model name")
     temperature: float = Field(0.0, description="Temperature for generation")
-    max_tokens: Optional[int] = Field(None, description="Max tokens in response")
-    api_key_env: str = Field("OPENAI_API_KEY", description="Env var for API key")
-    base_url: Optional[str] = Field(None, description="Base URL (for Ollama, etc.)")
+    max_tokens: Optional[int] = Field(4000, description="Max tokens in response")
 
 
 class MQTTConfig(BaseModel):
     """MQTT broker configuration"""
     host: str = Field("localhost", description="MQTT broker host")
     port: int = Field(1883, description="MQTT broker port")
-    username: Optional[str] = Field(None, description="Username (if auth required)")
-    password_env: Optional[str] = Field(None, description="Env var for password")
+    username: Optional[str] = Field(None, description="Username")
+    password: Optional[str] = Field(None, description="Password")
     client_id: str = Field("tifda-consumer", description="MQTT client ID")
+
+
+class IntegrationConfig(BaseModel):
+    """Integration configurations"""
+    mapa_base_url: str = Field(
+        "http://localhost:3000",
+        description="Base URL for mapa-puntos-interes"
+    )
+    mapa_timeout: int = Field(5, description="HTTP timeout in seconds")
+    mapa_max_retries: int = Field(3, description="Max retry attempts")
+    mapa_auto_sync: bool = Field(True, description="Auto-sync entities to mapa")
 
 
 class TIFDAConfig(BaseModel):
     """Main TIFDA configuration"""
     # System
-    environment: str = Field("development", description="Environment: development, production")
+    environment: str = Field("development", description="Environment")
     log_level: str = Field("INFO", description="Logging level")
     
     # LLM
@@ -108,10 +112,13 @@ class TIFDAConfig(BaseModel):
     # MQTT
     mqtt: MQTTConfig = Field(default_factory=MQTTConfig)
     
-    # Sensors (loaded from sensors.yaml)
+    # Integrations
+    integrations: IntegrationConfig = Field(default_factory=IntegrationConfig)
+    
+    # Sensors (can be registered at runtime)
     sensors: Dict[str, SensorConfig] = Field(default_factory=dict)
     
-    # Recipients (loaded from recipients.yaml)
+    # Recipients (can be registered at runtime)
     recipients: Dict[str, RecipientConfigModel] = Field(default_factory=dict)
     
     # Paths
@@ -119,7 +126,7 @@ class TIFDAConfig(BaseModel):
     checkpoint_dir: Path = Field(Path("data/checkpoints"), description="Checkpoints")
     audit_log_dir: Path = Field(Path("data/audit_logs"), description="Audit logs")
     
-    # Features
+    # Feature Flags
     enable_human_review: bool = Field(True, description="Enable HITL review")
     enable_auto_dissemination: bool = Field(False, description="Auto-disseminate without review")
     enable_mqtt: bool = Field(True, description="Enable MQTT integration")
@@ -132,119 +139,102 @@ class TIFDAConfig(BaseModel):
         return v
 
 
-# ==================== CONFIGURATION LOADER ====================
+# ==================== CONFIGURATION INSTANCE ====================
 
-class ConfigLoader:
-    """Loads and manages TIFDA configuration"""
-    
-    def __init__(self, config_file: str = "configs/development.yaml"):
-        """
-        Initialize configuration loader
-        
-        Args:
-            config_file: Path to main config file
-        """
-        self.config_file = Path(config_file)
-        self.config: Optional[TIFDAConfig] = None
-        
-    def load(self) -> TIFDAConfig:
-        """
-        Load configuration from YAML files
-        
-        Returns:
-            TIFDAConfig instance
-        """
-        # Load main config
-        if self.config_file.exists():
-            with open(self.config_file, 'r') as f:
-                config_data = yaml.safe_load(f) or {}
-        else:
-            print(f"⚠️  Config file not found: {self.config_file}, using defaults")
-            config_data = {}
-        
-        # Create config object
-        self.config = TIFDAConfig(**config_data)
-        
-        # Load sensors
-        sensors_file = self.config_file.parent / "sensors.yaml"
-        if sensors_file.exists():
-            with open(sensors_file, 'r') as f:
-                sensors_data = yaml.safe_load(f) or {}
-                for sensor_id, sensor_config in sensors_data.get("sensors", {}).items():
-                    self.config.sensors[sensor_id] = SensorConfig(
-                        sensor_id=sensor_id,
-                        **sensor_config
-                    )
-        
-        # Load recipients
-        recipients_file = self.config_file.parent / "recipients.yaml"
-        if recipients_file.exists():
-            with open(recipients_file, 'r') as f:
-                recipients_data = yaml.safe_load(f) or {}
-                for recipient_id, recipient_config in recipients_data.get("recipients", {}).items():
-                    self.config.recipients[recipient_id] = RecipientConfigModel(
-                        recipient_id=recipient_id,
-                        **recipient_config
-                    )
-        
-        print(f"✅ Configuration loaded from {self.config_file}")
-        print(f"   Sensors: {len(self.config.sensors)}")
-        print(f"   Recipients: {len(self.config.recipients)}")
-        
-        return self.config
-    
-    def get_sensor_config(self, sensor_id: str) -> Optional[SensorConfig]:
-        """Get configuration for specific sensor"""
-        if not self.config:
-            self.load()
-        return self.config.sensors.get(sensor_id)
-    
-    def get_recipient_config(self, recipient_id: str) -> Optional[RecipientConfigModel]:
-        """Get configuration for specific recipient"""
-        if not self.config:
-            self.load()
-        return self.config.recipients.get(recipient_id)
-    
-    def is_sensor_authorized(self, sensor_id: str) -> bool:
-        """Check if sensor is authorized and enabled"""
-        sensor_config = self.get_sensor_config(sensor_id)
-        return sensor_config is not None and sensor_config.enabled
+_config: Optional[TIFDAConfig] = None
 
 
-# ==================== GLOBAL CONFIG INSTANCE ====================
-
-_config_loader: Optional[ConfigLoader] = None
-
-
-def get_config(config_file: str = "configs/development.yaml") -> TIFDAConfig:
+def get_config() -> TIFDAConfig:
     """
-    Get global configuration instance (singleton pattern)
+    Get global configuration instance (singleton pattern).
     
-    Args:
-        config_file: Path to config file (only used on first call)
-        
+    Uses sensible defaults. Can be overridden programmatically:
+    
+    Example:
+        config = get_config()
+        config.llm.model = "gpt-4o-mini"
+        config.integrations.mapa_base_url = "http://remote-server:3000"
+    
     Returns:
         TIFDAConfig instance
     """
-    global _config_loader
+    global _config
     
-    if _config_loader is None:
-        _config_loader = ConfigLoader(config_file)
-        _config_loader.load()
+    if _config is None:
+        _config = TIFDAConfig()
+        print("✅ Configuration initialized with defaults")
     
-    return _config_loader.config
+    return _config
 
 
-def reload_config(config_file: str = "configs/development.yaml") -> TIFDAConfig:
+def set_config(config: TIFDAConfig):
     """
-    Force reload of configuration
+    Set global configuration instance.
     
     Args:
-        config_file: Path to config file
-        
-    Returns:
-        Reloaded TIFDAConfig instance
+        config: TIFDAConfig instance to use
     """
-    global _config_loader
-    _config_loader = ConfigLoader(config_file)
-    return _config_loader.load()
+    global _config
+    _config = config
+    print("✅ Configuration updated")
+
+
+def register_sensor(sensor_config: SensorConfig):
+    """
+    Register a sensor at runtime.
+    
+    Args:
+        sensor_config: SensorConfig to register
+    """
+    config = get_config()
+    config.sensors[sensor_config.sensor_id] = sensor_config
+    print(f"✅ Sensor registered: {sensor_config.sensor_id}")
+
+
+def register_recipient(recipient_config: RecipientConfigModel):
+    """
+    Register a recipient at runtime.
+    
+    Args:
+        recipient_config: RecipientConfigModel to register
+    """
+    config = get_config()
+    config.recipients[recipient_config.recipient_id] = recipient_config
+    print(f"✅ Recipient registered: {recipient_config.recipient_id}")
+
+
+# ==================== EJEMPLO DE USO ====================
+
+if __name__ == "__main__":
+    # Get default config
+    config = get_config()
+    
+    print(f"\n📋 Default Configuration:")
+    print(f"  Environment: {config.environment}")
+    print(f"  LLM Model: {config.llm.model}")
+    print(f"  MQTT Host: {config.mqtt.host}:{config.mqtt.port}")
+    print(f"  Mapa URL: {config.integrations.mapa_base_url}")
+    print(f"  Data Dir: {config.data_dir}")
+    
+    # Register a sensor
+    sensor = SensorConfig(
+        sensor_id="radar_01",
+        sensor_type="radar",
+        enabled=True,
+        trusted=True
+    )
+    register_sensor(sensor)
+    
+    # Register a recipient
+    recipient = RecipientConfigModel(
+        recipient_id="allied_bms_uk",
+        recipient_type="bms",
+        access_level="secret_access",
+        supported_formats=["link16", "json"],
+        connection_type="mqtt"
+    )
+    register_recipient(recipient)
+    
+    print(f"\n📊 Registered Components:")
+    print(f"  Sensors: {list(config.sensors.keys())}")
+    print(f"  Recipients: {list(config.recipients.keys())}")
