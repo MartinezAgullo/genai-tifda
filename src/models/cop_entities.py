@@ -90,6 +90,7 @@ class EntityCOP(BaseModel):
             "helicopter": "Avion",
             "uav": "Drone",
             "missile": "Otro",
+            "air_unknown": "Avion",
             "tank": "Tanque",
             "apc": "Vehiculo",
             "ifv": "Vehiculo",
@@ -102,6 +103,7 @@ class EntityCOP(BaseModel):
             "bridge": "Otro",
             "base": "BSM",
             "ground_vehicle": "Vehiculo",
+            "ground_unknown": "Vehiculo",
             "ship": "Otro",
             "carrier": "Otro",
             "destroyer": "Otro",
@@ -110,6 +112,7 @@ class EntityCOP(BaseModel):
             "patrol_boat": "Otro",
             "submarine": "Otro",
             "boat": "Otro",
+            "sea_unknown": "Otro",
             "satellite": "Otro",
             "cyber_node": "Otro",
             "person": "Infanteria",
@@ -118,7 +121,16 @@ class EntityCOP(BaseModel):
         }
         
         categoria = entity_type_to_categoria.get(self.entity_type, "Otro")
-        
+        valid_categorias = [
+            'Avion', 'Tanque', 'Drone', 'BSM', 'Centro de Mando',
+            'Unidad', 'Sub-Grupo Tactico', 'Peloton', 'Vehiculo',
+            'Artilleria', 'Infanteria', 'Otro'
+        ]
+
+        if categoria not in valid_categorias:
+            print(f"⚠️ Warning: category '{categoria}' not in valid list, using 'Otro'")
+            categoria = "Otro"
+            
         return {
             "nombre": self.entity_id,
             "descripcion": self.comments or f"{self.entity_type} - {self.classification}",

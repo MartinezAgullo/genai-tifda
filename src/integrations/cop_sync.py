@@ -53,7 +53,7 @@ class COPSync:
         }
     
     @traceable(name="cop_sync_entity")
-    def sync_entity(self, entity: EntityCOP) -> Tuple[bool, str]:
+    def sync_entity(self, entity: EntityCOP) -> tuple[bool, str]:
         """
         Sync single entity to mapa-puntos-interes.
         
@@ -179,7 +179,7 @@ class COPSync:
         return result
     
     @traceable(name="cop_sync_remove_entity")
-    def remove_entity(self, entity_id: str) -> Tuple[bool, str]:
+    def remove_entity(self, entity_id: str) -> tuple[bool, str]:
         """
         Remove entity from mapa-puntos-interes.
         
@@ -224,7 +224,7 @@ class COPSync:
             'last_sync': self.last_sync.isoformat() if self.last_sync else None
         }
     
-    def check_connection(self) -> Tuple[bool, str]:
+    def check_connection(self) -> tuple[bool, str]:
         """
         Check connection to mapa-puntos-interes.
         

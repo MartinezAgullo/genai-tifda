@@ -245,6 +245,13 @@ class MapaClient:
             MapaClientError: If update fails
         """
         try:
+            print(f"\n🔍 DEBUG UPDATE:")
+            print(f"   Punto ID: {punto_id}")
+            print(f"   Data keys: {list(punto_data.keys())}")
+            print(f"   Has longitud/latitud: {'longitud' in punto_data}, {'latitud' in punto_data}")
+            if 'longitud' in punto_data and 'latitud' in punto_data:
+                print(f"   Coords: ({punto_data['latitud']}, {punto_data['longitud']})")
+            
             response = self._request_with_retry(
                 'PUT',
                 f"{self.api_url}/{punto_id}",
