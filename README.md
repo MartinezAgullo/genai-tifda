@@ -322,30 +322,60 @@ Its main functions are:
 ----------------------
 ```
 .
-├── README.md
+.
 ├── data
-├── mqtt                    # MQTT scenarios and sensor simulators
-│   ├── scenarios
-│   └── sensor_simulators
-├── output                  # Generated reports and assessments
-│   ├── dissemination_reports
-│   └── threat_assessments
+├── examples
+│   └── test_radar.py
+├── mqtt
+│   ├── scenarios
+│   └── sensor_simulators
+├── output
+│   ├── dissemination_reports
+│   └── threat_assessments
 ├── pyproject.toml
-├── uv.lock
-└── src                     # Main source code directory
-    ├── agents              # GenAI agents (Threat Evaluator, Orchestrator)
-    ├── core                # Core logic, middleware, and message queue mgmt
-    ├── models              # Pydantic data models (COP, Sensor formats, Dissemination)
-    │   ├── cop_entities.py
-    │   ├── dissemination.py
-    │   ├── human_feedback.py
-    │   └── sensor_formats.py
-    ├── nodes               # LangGraph state nodes and functions
-    ├── parsers             # Logic for normalizing raw sensor inputs to COP
-    ├── security            # Security and policy enforcement logic
-    ├── tools               # Helper utilities for agents
-    ├── ui                  # User interface elements (Gradio)
-    └── visualization       # COP map rendering (Folium, APP-6E)
+└── src
+    ├── agents
+    ├── core
+    │   ├── config.py
+    │   ├── constants.py
+    │   └── state.py
+    ├── integrations
+    │   ├── cop_sync.py
+    │   └── mapa_client.py
+    ├── models
+    │   ├── cop_entities.py
+    │   ├── dissemination.py
+    │   ├── human_feedback.py
+    │   └── sensor_formats.py
+    ├── nodes
+    │   ├── cop_merge_node.py
+    │   ├── cop_normalizer_node.py
+    │   ├── cop_update_node.py
+    │   ├── dissemination_router_node.py
+    │   ├── firewall_node.py
+    │   ├── format_adapter_node.py
+    │   ├── human_review_node.py
+    │   ├── multimodal_parser_node.py
+    │   ├── parser_node.py
+    │   ├── threat_evaluator_node.py
+    │   └── transmission_node.py
+    ├── parsers
+    │   ├── asterix_parser.py
+    │   ├── base_parser.py
+    │   ├── drone_parser.py
+    │   ├── manual_parser.py
+    │   ├── parser_factory.py
+    │   └── radio_parser.py
+    ├── security
+    │   ├── REAMDE.md
+    │   └── firewall.py
+    ├── tifda_app.py
+    ├── tools
+    │   ├── audio_tools.py
+    │   ├── document_tools.py
+    │   └── image_tools.py
+    ├── ui
+    └── visualization
 ```
 * * * * *
 
@@ -389,6 +419,8 @@ Integration with [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-pu
 │  └──────────────────────────────────┘                   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+
 
 <!-- 
 tree -I "__pycache__|__init__.py|uv.lock|README.md|tests|*.log|*.db*|*.png|*.PNG" 

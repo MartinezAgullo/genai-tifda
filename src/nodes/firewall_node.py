@@ -156,13 +156,13 @@ or the data may contain malicious content.
                 "sensor_type": sensor_type,
                 "passed": is_valid,
                 "issues_count": len(all_issues),
-                "has_warnings": len(warnings) > 0 if warnings else False
+                "has_warnings": (isinstance(warnings, list) and len(warnings) > 0)
             }
         )
         
         # Add notification for UI
         if is_valid:
-            if warnings:
+            if isinstance(warnings, list) and warnings:
                 add_notification(
                     state, 
                     f"⚠️  {sensor_id}: Passed with {len(warnings)} warning(s)"

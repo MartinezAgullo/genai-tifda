@@ -51,7 +51,14 @@ class COPSync:
             'total_deleted': 0,
             'total_errors': 0
         }
-    
+        
+        # Perform an initial connection check after client is initialized
+        is_connected, msg = self.check_connection()
+        if not is_connected:
+            print("❌ COP Synchronization Error:")
+            print(f"   Connection to Mapa Client failed. Last known message: {msg}")
+            print("   ACTION REQUIRED: Start the external service server `mapa-puntos-interes` for COP synchronization at the configured URL.")
+        # --- END NEW CODE BLOCK ---
     @traceable(name="cop_sync_entity")
     def sync_entity(self, entity: EntityCOP) -> tuple[bool, str]:
         """
