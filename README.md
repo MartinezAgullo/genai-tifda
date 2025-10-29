@@ -34,7 +34,7 @@ Its main functions are:
 ```
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║                            TIFDA ARCHITECTURE                                 ║
-║                   Tactical Information Fusion & Decision Aid                  ║
+║                Tactical Information Fusion & Dissemination Agent              ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -90,7 +90,7 @@ Its main functions are:
 │              4. MULTIMODAL PROCESSING (LLM Tools)                           │
 │                                                                             │
 │  ┌────────────────────────────────────────────────────────────────┐         │
-│  │  Audio Transcription (Whisper)                                 │         │
+│  │  Audio Transcription (Whisper + pyannote)                      │         │
 │  │  • Radio intercepts → Text                                     │         │
 │  │  • Voice reports → Structured data                             │         │
 │  └────────────────────────────────────────────────────────────────┘         │
