@@ -131,7 +131,7 @@ class EntityCOP(BaseModel):
             print(f"⚠️ Warning: category '{categoria}' not in valid list, using 'Otro'")
             categoria = "Otro"
             
-        return {
+        punto_data = {
             "nombre": self.entity_id,
             "descripcion": self.comments or f"{self.entity_type} - {self.classification}",
             "categoria": categoria,
@@ -145,6 +145,11 @@ class EntityCOP(BaseModel):
             "longitud": self.location.lon,
             "latitud": self.location.lat
         }
+
+        if self.location.alt is not None:
+            punto_data['altitud'] = self.location.alt
+            
+        return punto_data
     
     def _calculate_priority(self) -> int:
         """Calculate priority 0-10 based on threat level and classification"""

@@ -73,6 +73,12 @@ class COPSync:
         try:
             # Convert to mapa format
             punto_data = entity.to_mapa_punto_interes()
+
+            if 'elemento_identificado' in punto_data and self.client.find_by_elemento_identificado(entity.entity_id):
+                print(f"\n🔍 DEBUG UPDATE PAYLOAD for {entity.entity_id}:")
+                # Use pprint for cleaner output
+                import pprint
+                pprint.pprint(punto_data)
             
             # Upsert (create or update)
             punto, was_created = self.client.upsert_punto(punto_data)

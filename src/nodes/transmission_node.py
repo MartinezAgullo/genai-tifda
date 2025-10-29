@@ -1,228 +1,145 @@
 """
-Transmission Node
-=================
+Transmission Node (MQTT ENABLED)
+=================================
 
-Eleventh and FINAL node in the TIFDA pipeline - message transmission.
+Eleventh and FINAL node in the TIFDA pipeline - REAL message transmission.
 
 This node:
 1. Takes formatted messages from format_adapter_node
-2. Publishes messages to MQTT topics
+2. Publishes messages to MQTT broker via real connection
 3. Tracks transmission success/failure
 4. Logs all transmissions for audit
 5. Completes the full TIFDA pipeline (sensor → dissemination)
 
-This is where intelligence reaches downstream systems - the final step
-in transforming sensor data into actionable, distributed intelligence.
-
-Current Implementation:
-- MOCK MODE: Logs transmissions instead of actual MQTT publish
-- Simulates success/failure for testing
-- Ready for integration with real MQTT broker
-
-Future Integration:
-- Replace mock with real MQTT client (paho-mqtt)
-- Configure broker connection
-- Handle retries and acknowledgments
-- Support multiple protocols (MQTT, AMQP, Kafka)
+✅ PRODUCTION READY - Uses real paho-mqtt client
+- Real MQTT broker connection
+- TLS support (optional)
+- Authentication (optional)
+- QoS configuration per recipient
+- Connection error handling
 
 Node Signature:
-    Input: TIFDAState with formatted_messages
+    Input: TIFDAState with pending_transmissions (List[OutgoingMessage])
     Output: Updated TIFDAState with transmission_log (pipeline complete!)
 """
 
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-import time
 import json
 
 from langsmith import traceable
 
 from src.core.state import TIFDAState, log_decision, add_notification
+from src.models.dissemination import OutgoingMessage
+from src.integrations.mqtt_publisher import get_mqtt_publisher, MQTTPublisher
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-# ==================== CONFIGURATION ====================
-
-# MQTT configuration (mock for now)
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
-MQTT_BASE_TOPIC = "tifda/dissemination"
-
-# Mock transmission settings
-MOCK_TRANSMISSION_DELAY_SEC = 0.1  # Simulate network delay
-MOCK_FAILURE_RATE = 0.0  # 0% failure rate for testing
-
-# Topic routing (recipient_type -> MQTT topic)
-TOPIC_ROUTING = {
-    "command": f"{MQTT_BASE_TOPIC}/command",
-    "unit": f"{MQTT_BASE_TOPIC}/units",
-    "allied": f"{MQTT_BASE_TOPIC}/allied",
-    "system": f"{MQTT_BASE_TOPIC}/systems",
-    "analyst": f"{MQTT_BASE_TOPIC}/analysts"
-}
-
-
-# ==================== TRANSMISSION UTILITIES ====================
-
-def _get_mqtt_topic(recipient_type: str, recipient_id: str) -> str:
-    """
-    Determine MQTT topic for recipient.
-    
-    Topic structure: tifda/dissemination/{type}/{recipient_id}
-    
-    Args:
-        recipient_type: Type of recipient (command, unit, allied, etc.)
-        recipient_id: Specific recipient identifier
-        
-    Returns:
-        MQTT topic string
-    """
-    base_topic = TOPIC_ROUTING.get(recipient_type, f"{MQTT_BASE_TOPIC}/other")
-    return f"{base_topic}/{recipient_id}"
-
-
-def _mock_mqtt_publish(
-    topic: str,
-    payload: Dict[str, Any],
-    qos: int = 1
-) -> tuple[bool, str]:
-    """
-    Mock MQTT publish for testing.
-    
-    In production, this would be replaced with:
-    ```python
-    import paho.mqtt.client as mqtt
-    client = mqtt.Client()
-    client.connect(MQTT_BROKER, MQTT_PORT)
-    result = client.publish(topic, json.dumps(payload), qos=qos)
-    ```
-    
-    Args:
-        topic: MQTT topic
-        payload: Message payload (will be JSON serialized)
-        qos: Quality of Service (0, 1, 2)
-        
-    Returns:
-        (success, message)
-    """
-    # Simulate network delay
-    time.sleep(MOCK_TRANSMISSION_DELAY_SEC)
-    
-    # Simulate occasional failures
-    import random
-    if random.random() < MOCK_FAILURE_RATE:
-        return False, "Mock transmission failure (simulated network error)"
-    
-    # Log the mock transmission
-    payload_size = len(json.dumps(payload))
-    logger.info(f"   📤 MOCK PUBLISH: {topic}")
-    logger.info(f"      QoS: {qos}, Size: {payload_size} bytes")
-    
-    return True, f"Published to {topic}"
-
-
-def _serialize_message_payload(formatted_message: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Serialize formatted message for transmission.
-    
-    Ensures message is JSON-serializable and adds transmission metadata.
-    
-    Args:
-        formatted_message: Formatted message from format_adapter_node
-        
-    Returns:
-        Serializable payload dictionary
-    """
-    # Convert datetime objects to ISO format strings
-    def serialize_datetime(obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return obj
-    
-    # Create payload
-    payload = {
-        "tifda_version": "1.0",
-        "transmission_timestamp": datetime.utcnow().isoformat(),
-        "message": {
-            "message_id": formatted_message["message_id"],
-            "recipient_id": formatted_message["recipient_id"],
-            "format": formatted_message["format"],
-            "priority": formatted_message["priority"],
-            "requires_acknowledgment": formatted_message.get("requires_acknowledgment", False),
-            "content": formatted_message["content"]
-        }
-    }
-    
-    return payload
 
 
 @traceable(name="transmission_node")
 def transmission_node(state: TIFDAState) -> Dict[str, Any]:
     """
-    Transmission node - final dissemination via MQTT.
+    Transmission node - REAL MQTT dissemination.
     
-    Publishes formatted messages to MQTT topics for consumption by
-    downstream systems (command centers, tactical displays, allied systems).
+    Publishes messages to MQTT broker for consumption by downstream systems
+    (command centers, tactical displays, allied systems, mapa-puntos-interes).
     
     This is the FINAL node in the TIFDA pipeline, completing the flow from
     sensor input to intelligence dissemination.
     
-    Current Implementation: MOCK MODE
-    - Logs transmissions instead of actual MQTT publish
-    - Simulates success/failure for testing
-    - Ready for production MQTT integration
-    
-    Production Integration:
-    - Replace _mock_mqtt_publish with real paho-mqtt client
-    - Configure broker connection (host, port, auth)
-    - Implement retry logic for failed transmissions
-    - Handle QoS levels and acknowledgments
+    ✅ PRODUCTION MODE: Real MQTT Connection
+    - Connects to configured MQTT broker
+    - Publishes to recipient-specific topics
+    - Handles connection errors gracefully
+    - Logs all transmission results
     
     MQTT Topic Structure:
-    - tifda/dissemination/command/{recipient_id}
-    - tifda/dissemination/units/{recipient_id}
-    - tifda/dissemination/allied/{recipient_id}
-    - tifda/dissemination/systems/{recipient_id}
+    - tifda/output/{recipient_id}
+    - Configurable per recipient via RecipientConfig
     
     Args:
         state: Current TIFDA state containing:
-            - formatted_messages: List[Dict] from format_adapter_node
+            - pending_transmissions: List[OutgoingMessage] from format_adapter_node
+            - recipients: Dict[str, RecipientConfig] (recipient configs)
         
     Returns:
         Dictionary with updated state fields:
             - transmission_log: List[Dict] (transmission results)
-            - transmission_stats: Dict (success/failure counts)
+            - pending_transmissions: [] (cleared after transmission)
             - decision_reasoning: str (markdown)
             - notification_queue: List[str]
             - decision_log: List[Dict]
     """
     logger.info("=" * 70)
-    logger.info("TRANSMISSION NODE - MQTT Message Dissemination")
+    logger.info("TRANSMISSION NODE - MQTT Message Dissemination (REAL)")
     logger.info("=" * 70)
     
     # ============ VALIDATION ============
     
-    formatted_messages = state.get("formatted_messages", [])
+    pending_transmissions = state.get("pending_transmissions", [])
     sensor_metadata = state.get("sensor_metadata", {})
     sensor_id = sensor_metadata.get("sensor_id", "unknown")
     
-    if not formatted_messages:
+    if not pending_transmissions:
         logger.info("✅ No messages to transmit")
         return {
             "transmission_log": [],
-            "transmission_stats": {
-                "total": 0,
-                "success": 0,
-                "failed": 0
-            },
-            "decision_reasoning": "## ✅ No Messages to Transmit\n\nNo formatted messages from previous node."
+            "decision_reasoning": "## ✅ No Messages to Transmit\n\nNo pending messages for transmission."
         }
     
-    logger.info(f"📡 Transmitting {len(formatted_messages)} messages")
-    logger.info(f"   Mode: MOCK (simulated MQTT)")
-    logger.info(f"   Broker: {MQTT_BROKER}:{MQTT_PORT}")
+    logger.info(f"📡 Transmitting {len(pending_transmissions)} messages")
+    logger.info(f"   Mode: PRODUCTION (real MQTT)")
+    
+    # ============ GET MQTT PUBLISHER ============
+    
+    try:
+        mqtt_publisher = get_mqtt_publisher()
+        is_healthy, health_msg = mqtt_publisher.health_check()
+        
+        if not is_healthy:
+            error_msg = f"MQTT publisher not healthy: {health_msg}"
+            logger.error(f"❌ {error_msg}")
+            
+            # Return error state
+            return {
+                "transmission_log": [],
+                "error": error_msg,
+                "decision_reasoning": f"## ❌ Transmission Failed\n\n{error_msg}\n\nCheck MQTT broker connection."
+            }
+        
+        logger.info(f"✅ MQTT publisher ready: {health_msg}")
+        
+    except Exception as e:
+        error_msg = f"Failed to get MQTT publisher: {e}"
+        logger.error(f"❌ {error_msg}")
+        
+        return {
+            "transmission_log": [],
+            "error": error_msg,
+            "decision_reasoning": f"## ❌ Transmission Failed\n\n{error_msg}"
+        }
+    
+    # ============ GET RECIPIENT CONFIGS ============
+    
+    # Get recipient configs from state (if available)
+    recipient_configs = {}
+    
+    # Try to get from registered recipients in config
+    try:
+        from src.core.config import get_config
+        config = get_config()
+        for recipient_id, recipient_config in config.recipients.items():
+            recipient_configs[recipient_id] = {
+                'recipient_id': recipient_config.recipient_id,
+                'recipient_type': recipient_config.recipient_type,
+                'access_level': recipient_config.access_level,
+                'connection_type': recipient_config.connection_type,
+                'connection_config': recipient_config.connection_config
+            }
+    except Exception as e:
+        logger.warning(f"Could not load recipient configs: {e}")
     
     # ============ TRANSMIT MESSAGES ============
     
@@ -230,82 +147,92 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
     transmission_errors = []
     
     # Stats
-    total_messages = len(formatted_messages)
+    total_messages = len(pending_transmissions)
     successful_transmissions = 0
     failed_transmissions = 0
     total_bytes_transmitted = 0
     
-    for formatted_message in formatted_messages:
-        message_id = formatted_message["message_id"]
-        recipient_id = formatted_message["recipient_id"]
-        recipient_type = formatted_message["recipient_type"]
-        priority = formatted_message["priority"]
+    for message in pending_transmissions:
+        message_id = message.message_id
+        recipient_id = message.recipient_id
         
         logger.info(f"\n📤 Transmitting: {message_id}")
-        logger.info(f"   Recipient: {recipient_id} ({recipient_type})")
-        logger.info(f"   Priority: {priority}")
-        logger.info(f"   Format: {formatted_message['format']}")
+        logger.info(f"   Recipient: {recipient_id}")
+        logger.info(f"   Format: {message.format_type}")
         
+        # Get recipient config (if available)
+        recipient_config = recipient_configs.get(recipient_id)
+        
+        # Publish message
         try:
-            # Determine topic
-            topic = _get_mqtt_topic(recipient_type, recipient_id)
+            result = mqtt_publisher.publish_message(
+                message=message,
+                recipient_config=recipient_config
+            )
             
-            # Serialize payload
-            payload = _serialize_message_payload(formatted_message)
-            payload_size = len(json.dumps(payload))
+            # Calculate payload size
+            payload_size = len(json.dumps(message.content))
             total_bytes_transmitted += payload_size
             
-            # Determine QoS based on priority
-            qos_map = {
-                "critical": 2,  # Exactly once
-                "high": 1,      # At least once
-                "medium": 1,    # At least once
-                "low": 0        # At most once
-            }
-            qos = qos_map.get(priority, 1)
-            
-            logger.info(f"   Topic: {topic}")
-            logger.info(f"   QoS: {qos}")
-            
-            # Publish (mock)
-            success, result_msg = _mock_mqtt_publish(topic, payload, qos=qos)
-            
-            if success:
-                logger.info(f"   ✅ Transmitted successfully")
-                successful_transmissions += 1
-            else:
-                logger.warning(f"   ❌ Transmission failed: {result_msg}")
-                failed_transmissions += 1
-                transmission_errors.append(f"{message_id}: {result_msg}")
-            
-            # Log transmission
-            transmission_log.append({
+            # Create log entry
+            log_entry = {
                 "message_id": message_id,
                 "recipient_id": recipient_id,
-                "topic": topic,
-                "format": formatted_message["format"],
-                "priority": priority,
-                "qos": qos,
+                "topic": result.topic,
+                "format": message.format_type,
+                "success": result.success,
+                "timestamp": result.timestamp.isoformat(),
                 "payload_size_bytes": payload_size,
-                "success": success,
-                "result": result_msg,
-                "timestamp": datetime.utcnow(),
-                "transmission_mode": "mock"
-            })
+                "qos": recipient_config.get('connection_config', {}).get('qos', 0) if recipient_config else 0
+            }
+            
+            if result.success:
+                logger.info(f"   ✅ Published successfully to '{result.topic}'")
+                successful_transmissions += 1
+                
+                # Update message status
+                message.transmitted = True
+                message.transmission_timestamp = result.timestamp
+                message.transmission_status = "success"
+            else:
+                logger.error(f"   ❌ Publish failed: {result.error}")
+                failed_transmissions += 1
+                transmission_errors.append(
+                    f"{message_id} → {recipient_id}: {result.error}"
+                )
+                
+                # Update message status
+                message.transmitted = False
+                message.transmission_status = "failed"
+                
+                log_entry["error"] = result.error
+            
+            transmission_log.append(log_entry)
             
         except Exception as e:
-            logger.exception(f"   ❌ Transmission error: {e}")
+            error_msg = f"Exception during transmission: {e}"
+            logger.error(f"   ❌ {error_msg}")
             failed_transmissions += 1
-            transmission_errors.append(f"{message_id}: {str(e)}")
+            transmission_errors.append(f"{message_id} → {recipient_id}: {error_msg}")
             
-            transmission_log.append({
+            # Create error log entry
+            log_entry = {
                 "message_id": message_id,
                 "recipient_id": recipient_id,
+                "format": message.format_type,
                 "success": False,
-                "result": f"Error: {str(e)}",
-                "timestamp": datetime.utcnow(),
-                "transmission_mode": "mock"
-            })
+                "timestamp": datetime.utcnow().isoformat(),
+                "error": error_msg
+            }
+            transmission_log.append(log_entry)
+            
+            # Update message status
+            message.transmitted = False
+            message.transmission_status = "failed"
+    
+    # ============ GET PUBLISHER STATS ============
+    
+    publisher_stats = mqtt_publisher.get_stats()
     
     # ============ RESULTS ============
     
@@ -326,11 +253,12 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
     
     # ============ BUILD REASONING ============
     
-    reasoning = f"""## 📡 Transmission Complete
+    reasoning = f"""## 📡 Transmission Complete (MQTT)
 
 **Sensor**: `{sensor_id}`
 **Messages Transmitted**: {total_messages}
-**Transmission Mode**: MOCK (simulated MQTT)
+**Transmission Mode**: PRODUCTION (real MQTT)
+**Broker Status**: {'✅ Connected' if publisher_stats['connected'] else '❌ Disconnected'}
 
 ### Transmission Summary:
 - ✅ **Success**: {successful_transmissions} ({transmission_stats['success_rate']:.1%})
@@ -340,9 +268,11 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
 """
     
     if transmission_errors:
-        reasoning += f"### ⚠️  Transmission Errors ({len(transmission_errors)}):\n"
+        reasoning += f"### ⚠️ Transmission Errors ({len(transmission_errors)}):\n"
         for error in transmission_errors[:3]:
             reasoning += f"- {error}\n"
+        if len(transmission_errors) > 3:
+            reasoning += f"- ... and {len(transmission_errors) - 3} more\n"
         reasoning += "\n"
     
     # Group by recipient
@@ -358,16 +288,20 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
         reasoning += "### 📤 Successfully Transmitted To:\n"
         for recipient, logs in messages_by_recipient.items():
             formats = [log["format"] for log in logs]
+            topics = list(set([log["topic"] for log in logs]))
             reasoning += f"- **{recipient}**: {len(logs)} message(s) ({', '.join(set(formats)).upper()})\n"
+            reasoning += f"  - Topics: {', '.join([f'`{t}`' for t in topics])}\n"
         reasoning += "\n"
     
-    reasoning += f"""### 🔗 MQTT Configuration:
-- **Broker**: {MQTT_BROKER}:{MQTT_PORT}
-- **Base Topic**: `{MQTT_BASE_TOPIC}`
-- **Topic Structure**: `{MQTT_BASE_TOPIC}/{{type}}/{{recipient_id}}`
+    # Publisher stats
+    reasoning += f"""### 📊 MQTT Publisher Statistics:
+- Total messages published (lifetime): {publisher_stats['total_published']}
+- Total failures (lifetime): {publisher_stats['total_failed']}
+- Messages by recipient: {len(publisher_stats['by_recipient'])} recipient(s)
 
-### 📋 Transmission Details:
 """
+    
+    reasoning += "### 📋 Transmission Details:\n"
     
     # Show first few transmissions
     for log_entry in transmission_log[:5]:
@@ -380,6 +314,8 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
         reasoning += f"  - Topic: `{log_entry.get('topic', 'N/A')}`\n"
         reasoning += f"  - QoS: {log_entry.get('qos', 'N/A')}\n"
         reasoning += f"  - Size: {log_entry.get('payload_size_bytes', 0)} bytes\n"
+        if not log_entry.get("success") and "error" in log_entry:
+            reasoning += f"  - Error: {log_entry['error']}\n"
     
     if len(transmission_log) > 5:
         reasoning += f"\n... and {len(transmission_log) - 5} more\n"
@@ -404,15 +340,15 @@ The full pipeline has been executed successfully:
 8. ✅ Human review (HITL)
 9. ✅ Dissemination routing (access control)
 10. ✅ Format adaptation (interoperability)
-11. ✅ **Transmission (MQTT)** ← YOU ARE HERE
+11. ✅ **Transmission (MQTT - REAL)** ← YOU ARE HERE
 
-**Intelligence has been successfully disseminated to downstream systems!** 🚀
+**Intelligence has been successfully disseminated to downstream systems via MQTT!** 🚀
 
 ### Next Steps:
-- Replace mock MQTT with real broker connection
-- Configure recipient systems to consume messages
-- Enable acknowledgments and retry logic
-- Monitor transmission metrics in production
+- Monitor recipient systems for message consumption
+- Review transmission logs and error rates
+- Configure additional recipients as needed
+- Tune QoS levels for reliability requirements
 """
     
     # ============ UPDATE STATE ============
@@ -422,7 +358,7 @@ The full pipeline has been executed successfully:
         state=state,
         node_name="transmission_node",
         decision_type="transmission",
-        reasoning=f"Transmitted {total_messages} messages: {successful_transmissions} success, {failed_transmissions} failed",
+        reasoning=f"Transmitted {total_messages} messages via MQTT: {successful_transmissions} success, {failed_transmissions} failed",
         data={
             "sensor_id": sensor_id,
             "total_messages": total_messages,
@@ -430,7 +366,8 @@ The full pipeline has been executed successfully:
             "failed": failed_transmissions,
             "success_rate": transmission_stats['success_rate'],
             "total_bytes": total_bytes_transmitted,
-            "transmission_mode": "mock"
+            "transmission_mode": "mqtt",
+            "mqtt_connected": publisher_stats['connected']
         }
     )
     
@@ -438,7 +375,7 @@ The full pipeline has been executed successfully:
     if successful_transmissions > 0:
         add_notification(
             state,
-            f"📡 {successful_transmissions} message(s) transmitted successfully"
+            f"📡 {successful_transmissions} message(s) transmitted via MQTT"
         )
     
     if failed_transmissions > 0:
@@ -450,19 +387,19 @@ The full pipeline has been executed successfully:
     # Pipeline complete notification
     add_notification(
         state,
-        "🎉 TIFDA pipeline complete - intelligence disseminated!"
+        "🎉 TIFDA pipeline complete - intelligence disseminated via MQTT!"
     )
     
     logger.info("\n" + "=" * 70)
     logger.info(f"✅ TRANSMISSION COMPLETE - PIPELINE FINISHED!")
     logger.info(f"   Success: {successful_transmissions}/{total_messages}")
-    logger.info(f"   Intelligence has been disseminated to downstream systems")
+    logger.info(f"   Intelligence has been disseminated via MQTT")
     logger.info("=" * 70 + "\n")
     
     # Return state updates
     return {
         "transmission_log": transmission_log,
-        "transmission_stats": transmission_stats,
+        "pending_transmissions": [],  # Clear after transmission
         "decision_reasoning": reasoning
     }
 
@@ -470,74 +407,77 @@ The full pipeline has been executed successfully:
 # ==================== TESTING ====================
 
 def test_transmission_node():
-    """Test the transmission node"""
+    """Test the transmission node with real MQTT (requires broker running)"""
     from src.core.state import create_initial_state
+    from src.models.dissemination import OutgoingMessage
+    from datetime import datetime
     
     print("\n" + "=" * 70)
-    print("TRANSMISSION NODE TEST")
+    print("TRANSMISSION NODE TEST (REAL MQTT)")
     print("=" * 70 + "\n")
     
-    # Test 1: Transmit messages
-    print("Test 1: Transmit formatted messages")
+    print("⚠️  This test requires a running MQTT broker")
+    print("   Start broker: podman compose up (or mosquitto -c config.conf)")
+    print()
+    
+    # Test: Transmit messages
+    print("Test: Transmit messages via MQTT")
     print("-" * 70)
     
     state = create_initial_state()
-    state["sensor_metadata"] = {"sensor_id": "radar_01"}
+    state["sensor_metadata"] = {"sensor_id": "radar_test"}
     
-    # Create formatted messages
-    state["formatted_messages"] = [
-        {
-            "message_id": "msg_001",
-            "recipient_id": "command_center",
-            "recipient_type": "command",
-            "format": "json",
-            "priority": "critical",
-            "requires_acknowledgment": True,
-            "content": {
-                "format": "json",
-                "threat_level": "critical"
-            }
-        },
-        {
-            "message_id": "msg_002",
-            "recipient_id": "tactical_ops",
-            "recipient_type": "unit",
-            "format": "link16",
-            "priority": "high",
-            "requires_acknowledgment": True,
-            "content": {
-                "format": "link16",
-                "threat_level": "high"
-            }
-        },
-        {
-            "message_id": "msg_003",
-            "recipient_id": "allied_liaison",
-            "recipient_type": "allied",
-            "format": "json",
-            "priority": "medium",
-            "requires_acknowledgment": False,
-            "content": {
-                "format": "json",
-                "threat_level": "medium"
-            }
-        }
+    # Create OutgoingMessage objects
+    state["pending_transmissions"] = [
+        OutgoingMessage(
+            message_id="test_msg_001",
+            decision_id="test_dec_001",
+            recipient_id="test_recipient_1",
+            format_type="json",
+            content={
+                "message_type": "test",
+                "threat_level": "low",
+                "test_data": "Hello from TIFDA"
+            },
+            timestamp=datetime.utcnow(),
+            transmitted=False
+        ),
+        OutgoingMessage(
+            message_id="test_msg_002",
+            decision_id="test_dec_001",
+            recipient_id="mapa",
+            format_type="json",
+            content={
+                "message_type": "cop_update",
+                "entity_count": 5,
+                "test_data": "COP sync test"
+            },
+            timestamp=datetime.utcnow(),
+            transmitted=False
+        )
     ]
     
-    result = transmission_node(state)
-    
-    print(f"Messages transmitted: {result['transmission_stats']['total']}")
-    print(f"Success: {result['transmission_stats']['success']}")
-    print(f"Failed: {result['transmission_stats']['failed']}")
-    print(f"Success rate: {result['transmission_stats']['success_rate']:.1%}")
-    print(f"Total bytes: {result['transmission_stats']['total_bytes']:,}")
-    
-    print(f"\nTransmission log:")
-    for log_entry in result['transmission_log']:
-        status = "✅" if log_entry['success'] else "❌"
-        print(f"  {status} {log_entry['message_id']} → {log_entry['recipient_id']}")
-    
-    print(f"\nReasoning preview:\n{result['decision_reasoning'][:500]}...")
+    try:
+        result = transmission_node(state)
+        
+        print(f"\n✅ Transmission node executed")
+        print(f"Messages processed: {len(state['pending_transmissions'])}")
+        print(f"Transmission log entries: {len(result.get('transmission_log', []))}")
+        
+        if result.get('transmission_log'):
+            print(f"\nTransmission results:")
+            for log_entry in result['transmission_log']:
+                status = "✅" if log_entry['success'] else "❌"
+                print(f"  {status} {log_entry['message_id']} → {log_entry.get('topic', 'N/A')}")
+        
+        if result.get('error'):
+            print(f"\n⚠️ Error: {result['error']}")
+        
+        print(f"\nReasoning preview:\n{result.get('decision_reasoning', '')[:500]}...")
+        
+    except Exception as e:
+        print(f"\n❌ Test failed: {e}")
+        print(f"   Make sure MQTT broker is running!")
     
     print("\n" + "=" * 70)
     print("TRANSMISSION NODE TEST COMPLETE")
