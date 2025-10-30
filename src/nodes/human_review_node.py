@@ -215,11 +215,104 @@ def human_review_node(state: TIFDAState) -> Dict[str, Any]:
     logger.info("HUMAN REVIEW NODE - HITL Threat Validation")
     logger.info("=" * 70)
     
-    # ============ VALIDATION ============
+    # ============ CHECK CONFIGURATION ============
+    
+    # Import config here to avoid circular imports
+    from src.core.config import get_config
+    config = get_config()
+
+    # 🔍 DEBUG: Print config flag value
+    # print(f"\n🔍 DEBUG human_review_node:")
+    # print(f"   config.enable_human_review = {config.enable_human_review}")
+    # print(f"   type = {type(config.enable_human_review)}")
     
     current_threats = state.get("current_threats", [])
     sensor_metadata = state.get("sensor_metadata", {})
     sensor_id = sensor_metadata.get("sensor_id", "unknown")
+    
+    # ============ BYPASS LOGIC ============
+    
+    # If human review is disabled, auto-approve ALL threats
+    if not config.enable_human_review:
+        #print(f"   ✅ BYPASS TRIGGERED - Flag is False")
+        logger.info("🔓 Human review DISABLED - auto-approving all threats")
+        logger.info(f"   Threats to approve: {len(current_threats)}")
+        
+        if not current_threats:
+            logger.info("✅ No threats to approve")
+            return {
+                "approved_threats": [],
+                "rejected_threats": [],
+                "review_log": [],
+                "decision_reasoning": "## 👤 Human Review Bypassed\n\n**Status**: Human review disabled in configuration\n**Threats**: None to approve\n"
+            }
+        
+        # Build bypass reasoning
+        reasoning = f"""## 👤 Human Review Bypassed
+
+**Sensor**: `{sensor_id}`
+**Configuration**: Human review **DISABLED**
+**Threats Auto-Approved**: {len(current_threats)}
+
+### All Threats Approved Without Review:
+"""
+        
+        for threat in current_threats:
+            reasoning += f"- ✅ `{threat.threat_source_id}` ({threat.threat_level}) - Auto-approved (review disabled)\n"
+        
+        reasoning += """
+
+### 📝 Notes:
+- Human review is currently disabled in configuration
+- All threats are automatically approved for dissemination
+- Enable `config.enable_human_review = True` to activate review process
+
+**Next**: Route to `dissemination_router_node` for access control and distribution
+"""
+        
+        # Log the bypass
+        log_decision(
+            state=state,
+            node_name="human_review_node",
+            decision_type="human_review_bypassed",
+            reasoning=f"Human review disabled - auto-approved {len(current_threats)} threats",
+            data={
+                "sensor_id": sensor_id,
+                "threats_approved": len(current_threats),
+                "review_mode": "bypassed",
+                "enable_human_review": False
+            }
+        )
+        
+        logger.info(f"✅ Auto-approved {len(current_threats)} threats (review disabled)")
+        logger.info("=" * 70 + "\n")
+
+        # 🔍 DEBUG: Check what we're about to return
+        # print(f"\n   🔍 BYPASS RETURN DEBUG:")
+        # print(f"      current_threats type: {type(current_threats)}")
+        # print(f"      current_threats length: {len(current_threats)}")
+        # if current_threats:
+        #     print(f"      First threat type: {type(current_threats[0])}")
+        #     print(f"      First threat ID: {current_threats[0].threat_source_id}")
+        #     print(f"      First threat level: {current_threats[0].threat_level}")
+        
+        return_dict = {
+            "approved_threats": current_threats,  # Approve ALL threats
+            "rejected_threats": [],
+            "review_log": [],
+            "decision_reasoning": reasoning
+        }
+        # print(f"      Return dict keys: {return_dict.keys()}")
+        # print(f"      approved_threats in return: {len(return_dict['approved_threats'])}")
+        # print(f"   🔍 END BYPASS RETURN DEBUG\n")
+        #####
+        
+        return return_dict
+    else:
+        #print(f"   ❌ BYPASS NOT TRIGGERED - Flag is True")
+        logger.info("🔒 Human review ENABLED - proceeding with operator validation")
+    
+    # ============ VALIDATION ============
     
     if not current_threats:
         logger.info("✅ No threats to review")

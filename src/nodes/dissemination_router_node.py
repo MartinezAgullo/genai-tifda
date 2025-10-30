@@ -50,6 +50,13 @@ CLASSIFICATION_HIERARCHY = [
 
 # Default recipients (mock - in production would come from database/config)
 DEFAULT_RECIPIENTS = {
+    "command_post_001": {
+        "recipient_id": "command_post_001",
+        "recipient_type": "command",
+        "clearance_level": "SECRET",
+        "need_to_know": ["all"],
+        "receive_threat_levels": ["critical", "high", "medium", "low"]
+    },
     "command_center": {
         "recipient_id": "command_center",
         "recipient_type": "command",
@@ -370,17 +377,37 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
                     cop_entities
                 )
                 
+                # Generate a decision_id for this message
+                decision_id = f"decision_{threat.assessment_id}_{recipient_id}"
+
+                # Build content dictionary with threat information
+                content = {
+                    "threat_assessment": {
+                        "assessment_id": filtered_threat.assessment_id,
+                        "threat_level": filtered_threat.threat_level,
+                        "threat_source_id": filtered_threat.threat_source_id,
+                        "affected_entities": filtered_threat.affected_entities,
+                        "reasoning": filtered_threat.reasoning,
+                        "confidence": filtered_threat.confidence,
+                        "timestamp": filtered_threat.timestamp.isoformat(),
+                        "distances_to_affected_km": filtered_threat.distances_to_affected_km
+                    },
+                    "message_type": "threat_alert",
+                    "priority": threat.threat_level,
+                    "requires_acknowledgment": threat.threat_level in ["critical", "high"],
+                    "recipient_type": recipient_config["recipient_type"],
+                    "sensor_id": sensor_id
+                }
+
                 # Create outgoing message
+                # Create outgoing message with correct schema
                 message = OutgoingMessage(
                     message_id=f"msg_{threat.assessment_id}_{recipient_id}_{int(datetime.utcnow().timestamp())}",
+                    decision_id=decision_id,
                     recipient_id=recipient_id,
-                    recipient_type=recipient_config["recipient_type"],
-                    message_type="threat_alert",
-                    format="link16",  # Default format (will be adapted in next node)
-                    threat_assessment=filtered_threat,
-                    timestamp=datetime.utcnow(),
-                    priority=threat.threat_level,
-                    requires_acknowledgment=threat.threat_level in ["critical", "high"]
+                    format_type="json",  # Default to json, will be adapted in format_adapter_node
+                    content=content,
+                    timestamp=datetime.utcnow()
                 )
                 
                 outgoing_messages.append(message)
@@ -410,7 +437,24 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
         
         logger.info(f"   📤 Disseminated to {len(threat_recipients)} recipient(s)")
     
+    
+    
     # ============ RESULTS ============
+    # 🔍 DEBUG OUTPUT
+    print(f"\n🔍 DEBUG dissemination_router_node:")
+    print(f"   Approved threats processed: {len(approved_threats)}")
+    print(f"   Outgoing messages created: {len(outgoing_messages)}")
+    print(f"   Total messages counter: {total_messages}")
+    if approved_threats:
+        print(f"   First threat ID: {approved_threats[0].threat_source_id}")
+        print(f"   First threat level: {approved_threats[0].threat_level}")
+    print(f"   Recipients configured: {list(DEFAULT_RECIPIENTS.keys())}")
+    print(f"   Blocked by clearance: {blocked_by_clearance}")
+    print(f"   Blocked by need-to-know: {blocked_by_need_to_know}")
+    print(f"   Blocked by threat level: {blocked_by_threat_level}")
+    print()    
+    # 🔍 DEBUG OUTPUT
+
     
     logger.info(f"\n📊 Routing complete:")
     logger.info(f"   Messages created: {total_messages}")
@@ -453,8 +497,11 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
             reasoning += f"**{recipient_id}** ({recipient_config['recipient_type']}, clearance: {recipient_config['clearance_level']})\n"
             
             for msg in messages:
-                icon = "🔴" if msg.priority == "critical" else "🟠" if msg.priority == "high" else "🟡"
-                reasoning += f"  {icon} {msg.threat_assessment.threat_source_id} ({msg.priority})\n"
+                threat_source_id = msg.content.get("threat_assessment", {}).get("threat_source_id", "unknown")
+                priority = msg.content.get("priority", "unknown")
+                
+                icon = "🔴" if msg.content.get("priority") == "critical" else "🟠" if msg.content.get("priority") == "high" else "🟡"
+                reasoning += f"  {icon} {threat_source_id} ({priority})\n"
             
             reasoning += "\n"
     else:
@@ -497,7 +544,8 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
     
     # Add notifications
     if total_messages > 0:
-        critical_high = sum(1 for msg in outgoing_messages if msg.priority in ["critical", "high"])
+        critical_high = sum(1 for msg in outgoing_messages if msg.content.get("priority") in ["critical", "high"])
+
         
         if critical_high > 0:
             add_notification(
@@ -600,7 +648,8 @@ def test_dissemination_router_node():
     for recipient_id, messages in messages_by_recipient.items():
         print(f"  {recipient_id}: {len(messages)} message(s)")
         for msg in messages:
-            print(f"    - {msg.priority} priority")
+            print(f"    - {msg.content.get('priority')} priority")
+
     
     print(f"\nReasoning preview:\n{result['decision_reasoning'][:500]}...")
     

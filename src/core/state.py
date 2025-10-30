@@ -68,6 +68,15 @@ class TIFDAState(TypedDict):
     current_threats: List[ThreatAssessment]
     """Threat assessments for current situation"""
     
+    approved_threats: List[ThreatAssessment]
+    """Threats approved by human review (or auto-approved if review disabled)"""
+    
+    rejected_threats: List[ThreatAssessment]
+    """Threats rejected by human review"""
+    
+    review_log: List[Dict[str, Any]]
+    """Log of human review decisions for threats"""
+    
     threat_history: Annotated[List[ThreatAssessment], operator.add]
     """Historical threat assessments (accumulated over time)"""
     
@@ -81,8 +90,17 @@ class TIFDAState(TypedDict):
     dissemination_decisions: List[DisseminationDecision]
     """Current dissemination decisions (who gets what)"""
     
+    outgoing_messages: List[OutgoingMessage]
+    """Messages ready for transmission (from dissemination_router_node)"""
+    
     pending_transmissions: List[OutgoingMessage]
     """Messages ready to be sent"""
+    
+    dissemination_log: List[Dict[str, Any]]
+    """Log of dissemination routing decisions"""
+    
+    formatted_messages: List[Dict[str, Any]]
+    """Messages after format adaptation (ready for transmission_node)"""
     
     transmission_log: Annotated[List[Dict], operator.add]
     """Log of all transmissions (accumulated over time)"""
@@ -162,12 +180,18 @@ def create_initial_state() -> TIFDAState:
         
         # Threats
         current_threats=[],
+        approved_threats=[],
+        rejected_threats=[],
+        review_log=[],
         threat_history=[],
         threat_matrix={},
         
         # Dissemination
         dissemination_decisions=[],
+        outgoing_messages=[],
         pending_transmissions=[],
+        dissemination_log=[],
+        formatted_messages=[],
         transmission_log=[],
         
         # HITL

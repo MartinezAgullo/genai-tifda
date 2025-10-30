@@ -79,7 +79,7 @@ def _format_as_link16(message: OutgoingMessage) -> Dict[str, Any]:
     Returns:
         Dictionary representing Link16 message
     """
-    threat = message.threat_assessment
+    threat = message.content.get('threat_assessment')
     
     # Determine J-series message type based on entity
     # (In real implementation, would query COP for entity details)
@@ -100,9 +100,9 @@ def _format_as_link16(message: OutgoingMessage) -> Dict[str, Any]:
             "transmission_id": message.message_id,
             "originator": "TIFDA",
             "timestamp": message.timestamp.strftime("%Y%m%d%H%M%S"),
-            "priority": priority_map.get(message.priority, "ROUTINE"),
+            "priority": priority_map.get(message.content.get('priority'), "ROUTINE"),
             "classification": "SECRET",  # Would come from message
-            "requires_ack": message.requires_acknowledgment
+            "requires_ack": message.content.get('requires_acknowledgment')
         },
         "body": {
             "track_id": threat.threat_source_id,
@@ -134,18 +134,18 @@ def _format_as_json(message: OutgoingMessage) -> Dict[str, Any]:
     Returns:
         Dictionary for JSON serialization
     """
-    threat = message.threat_assessment
+    threat = message.content.get('threat_assessment')
     
     json_message = {
         "format": "json",
         "api_version": "1.0",
         "message": {
             "message_id": message.message_id,
-            "message_type": message.message_type,
+            "message_type": message.content.get('message_type'),
             "recipient_id": message.recipient_id,
             "timestamp": message.timestamp.isoformat(),
-            "priority": message.priority,
-            "requires_acknowledgment": message.requires_acknowledgment
+            "priority": message.content.get('priority'),
+            "requires_acknowledgment": message.content.get('requires_acknowledgment')
         },
         "threat_assessment": {
             "assessment_id": threat.assessment_id,
@@ -178,7 +178,7 @@ def _format_as_xml(message: OutgoingMessage) -> str:
     Returns:
         XML string
     """
-    threat = message.threat_assessment
+    threat = message.content.get('threat_assessment')
     
     # Create root element
     root = ET.Element("ThreatMessage")
@@ -188,11 +188,11 @@ def _format_as_xml(message: OutgoingMessage) -> str:
     # Message metadata
     metadata = ET.SubElement(root, "Metadata")
     ET.SubElement(metadata, "MessageId").text = message.message_id
-    ET.SubElement(metadata, "MessageType").text = message.message_type
+    ET.SubElement(metadata, "MessageType").text = message.content.get('message_type')
     ET.SubElement(metadata, "RecipientId").text = message.recipient_id
     ET.SubElement(metadata, "Timestamp").text = message.timestamp.isoformat()
-    ET.SubElement(metadata, "Priority").text = message.priority.upper()
-    ET.SubElement(metadata, "RequiresAcknowledgment").text = str(message.requires_acknowledgment)
+    ET.SubElement(metadata, "Priority").text = message.content.get('priority').upper()
+    ET.SubElement(metadata, "RequiresAcknowledgment").text = str(message.content.get('requires_acknowledgment'))
     
     # Threat assessment
     assessment = ET.SubElement(root, "ThreatAssessment")
@@ -238,7 +238,7 @@ def _format_as_csv(message: OutgoingMessage) -> Dict[str, Any]:
     Returns:
         Dictionary with CSV content
     """
-    threat = message.threat_assessment
+    threat = message.content.get('threat_assessment')
     
     # Create CSV header and row
     header = "message_id,recipient_id,timestamp,priority,threat_level,threat_source_id,confidence,reasoning,affected_entities"
@@ -247,7 +247,7 @@ def _format_as_csv(message: OutgoingMessage) -> Dict[str, Any]:
     reasoning_escaped = threat.reasoning.replace(",", ";")
     affected_str = "|".join(threat.affected_entities)
     
-    row = f"{message.message_id},{message.recipient_id},{message.timestamp.isoformat()},{message.priority},{threat.threat_level},{threat.threat_source_id},{threat.confidence},{reasoning_escaped},{affected_str}"
+    row = f"{message.message_id},{message.recipient_id},{message.timestamp.isoformat()},{message.content.get('priority')},{threat.threat_level},{threat.threat_source_id},{threat.confidence},{reasoning_escaped},{affected_str}"
     
     return {
         "format": "csv",
@@ -352,14 +352,15 @@ def format_adapter_node(state: TIFDAState) -> Dict[str, Any]:
     for message in outgoing_messages:
         logger.info(f"\n📝 Formatting message: {message.message_id}")
         logger.info(f"   Recipient: {message.recipient_id}")
-        logger.info(f"   Priority: {message.priority}")
+        logger.info(f"   Priority: {message.content.get('priority')}")
+
         
         try:
             # Determine target format
             # Priority: 1) Recipient preference, 2) Message format, 3) Default to JSON
             target_format = DEFAULT_FORMAT_PREFERENCES.get(
                 message.recipient_id,
-                message.format if message.format else "json"
+                message.format_type if message.format_type else "json"
             )
             
             logger.info(f"   Target format: {target_format.upper()}")
@@ -371,10 +372,10 @@ def format_adapter_node(state: TIFDAState) -> Dict[str, Any]:
             formatted_message = {
                 "message_id": message.message_id,
                 "recipient_id": message.recipient_id,
-                "recipient_type": message.recipient_type,
+                "recipient_type": message.content.get('recipient_type'),
                 "format": target_format,
-                "priority": message.priority,
-                "requires_acknowledgment": message.requires_acknowledgment,
+                "priority": message.content.get('priority'),
+                "requires_acknowledgment": message.content.get('requires_acknowledgment'),
                 "timestamp": datetime.utcnow(),
                 "content": formatted_content
             }
