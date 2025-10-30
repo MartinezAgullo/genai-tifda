@@ -2,6 +2,12 @@
 
 Local Mosquitto MQTT broker for TIFDA message dissemination.
 
+## Components
+
+- **Broker** (mosquitto): Message router that receives and distributes messages between publishers and subscribers
+- **Publisher** (TIFDA `transmission_node`): Publishes dissemination reports and threat assessments to topics
+- **Subscriber** (mosquitto_sub / downstream systems): Listens to topics and receives messages published by TIFDA
+
 ## Structure
 
 ```
@@ -14,14 +20,16 @@ mqtt/
 
 ## Usage
 
+### 1. Start Broker (Terminal 1)
+
 ```bash
 cd mqtt
 mosquitto -c config/mosquitto.conf
 ```
-Now the broker is running and waitng for mesages.
-When the TIFDA pipeline is run, it will publish to the broker. 
 
-## Subscribe to Messages
+The broker is now running and waiting for messages.
+
+### 2. Subscribe to Messages (Terminal 2)
 
 ```bash
 # All dissemination reports
@@ -29,4 +37,25 @@ mosquitto_sub -t 'tifda/output/dissemination_reports/#' -v
 
 # Threat assessments
 mosquitto_sub -t 'tifda/output/threat_assessments' -v
+
+# Everything
+mosquitto_sub -t 'tifda/output/#' -v
 ```
+
+### 3. Run TIFDA Pipeline (Terminal 3)
+
+When TIFDA runs, `transmission_node` publishes messages to the broker.
+
+**Terminal 2** will show the messages TIFDA published in real-time.
+
+## Flow
+
+```
+TIFDA transmission_node → mosquitto broker → mosquitto_sub (or downstream systems)
+    (Publisher)              (Router)           (Subscriber)
+```
+
+**Keep**:
+- Terminal 1: Broker running
+- Terminal 2: Subscriber listening
+- Terminal 3: Run TIFDA → messages appear in Terminal 2
