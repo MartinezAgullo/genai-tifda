@@ -4,9 +4,13 @@ TIFDA Application
 Complete pipeline from sensor input to dissemination.
 """
 
+from dotenv import load_dotenv
+load_dotenv()               
+
+from datetime import datetime
 from langgraph.graph import StateGraph, END
 from src.core.state import TIFDAState, create_state_from_sensor_event
-from src.models import SensorMessage
+from src.models.sensor_formats import SensorMessage
 
 # Import all nodes
 from src.nodes.firewall_node import firewall_node
@@ -72,3 +76,47 @@ def create_tifda_graph():
 
 # Create the app
 tifda_app = create_tifda_graph()
+
+def run_pipeline(sensor_input: dict) -> dict:
+    """
+    Run complete TIFDA pipeline from sensor input to dissemination.
+    
+    Args:
+        sensor_input: Dict with sensor data
+            {
+                "sensor_id": str,
+                "sensor_type": str,
+                "data": str or dict,
+                "timestamp": str (optional),
+                "metadata": dict (optional)
+            }
+    
+    Returns:
+        Final state dict with results
+    
+    Example:
+        result = run_pipeline({
+            "sensor_id": "radar_01",
+            "sensor_type": "radar",
+            "data": "Aircraft at 39.5N, 0.4W"
+        })
+    """
+    # Convert dict to SensorMessage if needed
+    if isinstance(sensor_input, dict):
+        sensor_message = SensorMessage(
+            sensor_id=sensor_input.get("sensor_id", "unknown"),
+            sensor_type=sensor_input.get("sensor_type", "unknown"),
+            timestamp=sensor_input.get("timestamp", datetime.utcnow().isoformat()),
+            data=sensor_input.get("data", ""),
+            metadata=sensor_input.get("metadata", {})
+        )
+    else:
+        sensor_message = sensor_input
+    
+    # Create initial state from sensor message
+    initial_state = create_state_from_sensor_event(sensor_message)
+    
+    # Run the graph
+    final_state = tifda_app.invoke(initial_state)
+    
+    return final_state

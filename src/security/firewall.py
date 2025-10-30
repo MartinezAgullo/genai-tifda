@@ -73,8 +73,8 @@ SUSPICIOUS_KEYWORDS = [
     "bypass",
     "jailbreak",
     "prompt",
-    "instruction",
-    "system",
+    #"instruction",  # Too generic, removed to reduce false positive
+    #"system", # Too generic, removed to reduce false positives
     "admin",
     "execute",
     "eval",

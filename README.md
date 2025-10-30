@@ -20,7 +20,7 @@ Its main functions are:
 | **Agent Framework** | LangGraph |
 | **Inputs/Outputs** | Inputs are simulated and transmitted via an MQTT broker, mixing different signal types to create realistic, complex scenarios. Outputs are tailored to specific recipient formats. |
 | **Dependencies** | Managed using UV. |
-| **Visualization** |  Use external tool  [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes) to represent the COP in a map) |
+| **Visualization** |  Use external tool  [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes) to represent the COP in a map |
 
 - Security against prompt injection
 - Classification and access control system. Use of honehypots for enemies.

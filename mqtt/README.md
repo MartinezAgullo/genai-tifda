@@ -46,6 +46,11 @@ mosquitto_sub -t 'tifda/output/#' -v
 
 When TIFDA runs, `transmission_node` publishes messages to the broker.
 
+As a test, on a new terminal you can do:
+```bash
+mosquitto_pub -t 'tifda/output/dissemination_reports/test' -m 'Hello TIFDA!'
+```
+
 **Terminal 2** will show the messages TIFDA published in real-time.
 
 ## Flow
