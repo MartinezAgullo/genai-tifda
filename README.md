@@ -6,7 +6,7 @@ Its main functions are:
 
 1. Ingest multimodal data from diverse sources.
 
-2. Convert this data into a valid format to be used as Common Operational Picture (COP) by the Battle Management System (BMS).
+2. Convert this data into a valid format to be used as Common Operational Picture (COP) by the Battle Management System (BMS). Note that this is not a real COP but a toy-model one.
 
 3. Selectively distribute only the essential information to the relevant output actors, utilizing their specific formats.
 

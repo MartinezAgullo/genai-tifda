@@ -322,6 +322,13 @@ class MapaClient:
         if existing:
             # Update existing
             punto_id = existing['id']
+
+            update_data = punto_data.copy()
+            static_keys = ['elemento_identificado', 'tipo_elemento', 'nombre', 'created_at']
+            for key in static_keys:
+                if key in update_data:
+                    del update_data[key]
+
             updated = self.update_punto(punto_id, punto_data)
             return updated, False
         else:
