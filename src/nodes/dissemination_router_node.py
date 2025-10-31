@@ -441,18 +441,18 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
     
     # ============ RESULTS ============
     # 🔍 DEBUG OUTPUT
-    print(f"\n🔍 DEBUG dissemination_router_node:")
-    print(f"   Approved threats processed: {len(approved_threats)}")
-    print(f"   Outgoing messages created: {len(outgoing_messages)}")
-    print(f"   Total messages counter: {total_messages}")
-    if approved_threats:
-        print(f"   First threat ID: {approved_threats[0].threat_source_id}")
-        print(f"   First threat level: {approved_threats[0].threat_level}")
-    print(f"   Recipients configured: {list(DEFAULT_RECIPIENTS.keys())}")
-    print(f"   Blocked by clearance: {blocked_by_clearance}")
-    print(f"   Blocked by need-to-know: {blocked_by_need_to_know}")
-    print(f"   Blocked by threat level: {blocked_by_threat_level}")
-    print()    
+    # print(f"\n🔍 DEBUG dissemination_router_node:")
+    # print(f"   Approved threats processed: {len(approved_threats)}")
+    # print(f"   Outgoing messages created: {len(outgoing_messages)}")
+    # print(f"   Total messages counter: {total_messages}")
+    # if approved_threats:
+    #     print(f"   First threat ID: {approved_threats[0].threat_source_id}")
+    #     print(f"   First threat level: {approved_threats[0].threat_level}")
+    # print(f"   Recipients configured: {list(DEFAULT_RECIPIENTS.keys())}")
+    # print(f"   Blocked by clearance: {blocked_by_clearance}")
+    # print(f"   Blocked by need-to-know: {blocked_by_need_to_know}")
+    # print(f"   Blocked by threat level: {blocked_by_threat_level}")
+    # print()    
     # 🔍 DEBUG OUTPUT
 
     

@@ -105,18 +105,18 @@ def _format_as_link16(message: OutgoingMessage) -> Dict[str, Any]:
             "requires_ack": message.content.get('requires_acknowledgment')
         },
         "body": {
-            "track_id": threat.threat_source_id,
-            "threat_level": threat.threat_level.upper(),
-            "assessment_confidence": threat.confidence,
-            "affected_units": threat.affected_entities,
-            "reasoning": threat.reasoning[:100],  # Truncate for Link16
-            "timestamp": threat.timestamp.strftime("%Y%m%d%H%M%S")
+            "track_id": threat.get('threat_source_id'),
+            "threat_level": threat.get('threat_level').upper(),
+            "assessment_confidence": threat.get('confidence'),
+            "affected_units": threat.get('affected_entities'),
+            "reasoning": (threat.get('reasoning') or '')[:100],  # Truncate for Link16
+            "timestamp": threat.get('timestamp')
         }
     }
     
     # Add distance information if available
-    if threat.distances_to_affected_km:
-        link16_message["body"]["distances_km"] = threat.distances_to_affected_km
+    if threat.get('distances_to_affected_km'):
+        link16_message["body"]["distances_km"] = threat.get('distances_to_affected_km')
     
     return link16_message
 
@@ -148,19 +148,19 @@ def _format_as_json(message: OutgoingMessage) -> Dict[str, Any]:
             "requires_acknowledgment": message.content.get('requires_acknowledgment')
         },
         "threat_assessment": {
-            "assessment_id": threat.assessment_id,
-            "threat_level": threat.threat_level,
-            "threat_source_id": threat.threat_source_id,
-            "confidence": threat.confidence,
-            "reasoning": threat.reasoning,
-            "affected_entities": threat.affected_entities,
-            "timestamp": threat.timestamp.isoformat()
+            "assessment_id": threat.get('assessment_id'),
+            "threat_level": threat.get('threat_level'),
+            "threat_source_id": threat.get('threat_source_id'),
+            "confidence": threat.get('confidence'),
+            "reasoning": threat.get('reasoning'),
+            "affected_entities": threat.get('affected_entities'),
+            "timestamp": threat.get('timestamp')
         }
     }
     
     # Add optional distance information
-    if threat.distances_to_affected_km:
-        json_message["threat_assessment"]["distances_to_affected_km"] = threat.distances_to_affected_km
+    if threat.get('distances_to_affected_km'):
+        json_message["threat_assessment"]["distances_to_affected_km"] = threat.get('distances_to_affected_km')
     
     return json_message
 
@@ -196,22 +196,23 @@ def _format_as_xml(message: OutgoingMessage) -> str:
     
     # Threat assessment
     assessment = ET.SubElement(root, "ThreatAssessment")
-    ET.SubElement(assessment, "AssessmentId").text = threat.assessment_id
-    ET.SubElement(assessment, "ThreatLevel").text = threat.threat_level.upper()
-    ET.SubElement(assessment, "ThreatSourceId").text = threat.threat_source_id
-    ET.SubElement(assessment, "Confidence").text = str(threat.confidence)
-    ET.SubElement(assessment, "Reasoning").text = threat.reasoning
-    ET.SubElement(assessment, "Timestamp").text = threat.timestamp.isoformat()
+    ET.SubElement(assessment, "AssessmentId").text = threat.get('assessment_id')
+    ET.SubElement(assessment, "ThreatLevel").text = threat.get('threat_level').upper()
+    ET.SubElement(assessment, "ThreatSourceId").text = threat.get('threat_source_id')
+    ET.SubElement(assessment, "Confidence").text = str(threat.get('confidence'))
+    ET.SubElement(assessment, "Reasoning").text = threat.get('reasoning')
+    ET.SubElement(assessment, "Timestamp").text = threat.get('timestamp')
+
     
     # Affected entities
     affected = ET.SubElement(assessment, "AffectedEntities")
-    for entity_id in threat.affected_entities:
+    for entity_id in threat.get('affected_entities'):
         ET.SubElement(affected, "Entity").text = entity_id
     
     # Distances (if available)
-    if threat.distances_to_affected_km:
+    if threat.get('distances_to_affected_km'):
         distances = ET.SubElement(assessment, "Distances")
-        for entity_id, distance_km in threat.distances_to_affected_km.items():
+        for entity_id, distance_km in threat.get('distances_to_affected_km').items():
             dist_elem = ET.SubElement(distances, "Distance")
             dist_elem.set("entity", entity_id)
             dist_elem.set("km", str(distance_km))
@@ -244,10 +245,10 @@ def _format_as_csv(message: OutgoingMessage) -> Dict[str, Any]:
     header = "message_id,recipient_id,timestamp,priority,threat_level,threat_source_id,confidence,reasoning,affected_entities"
     
     # Escape commas in reasoning
-    reasoning_escaped = threat.reasoning.replace(",", ";")
-    affected_str = "|".join(threat.affected_entities)
+    reasoning_escaped = threat.get('reasoning').replace(",", ";")
+    affected_str = "|".join(threat.get('affected_entities'))
     
-    row = f"{message.message_id},{message.recipient_id},{message.timestamp.isoformat()},{message.content.get('priority')},{threat.threat_level},{threat.threat_source_id},{threat.confidence},{reasoning_escaped},{affected_str}"
+    row = f"{message.message_id},{message.recipient_id},{message.timestamp.isoformat()},{message.content.get('priority')},{threat.get('threat_level')},{threat.get('threat_source_id')},{threat.get('confidence')},{reasoning_escaped},{affected_str}"
     
     return {
         "format": "csv",
