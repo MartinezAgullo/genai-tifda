@@ -27,6 +27,12 @@ Its main functions are:
 
 
 * * * * *
+# How to
+
+
+Configure from `src/core/init_config.py`
+
+* * * * *
 
 ## 🏗️ TIFDA - Arquitectura Completa del Sistema
 ----------------------

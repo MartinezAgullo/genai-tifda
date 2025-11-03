@@ -5,8 +5,8 @@ Human Review Node
 Eighth node in the TIFDA pipeline - Human-in-the-Loop (HITL) review.
 
 This node:
-1. Presents threat assessments to human operators for review
-2. Collects approve/reject/modify decisions
+1. Presents threat assessments to human operators for review via Gradio UI
+2. Collects approve/reject/flag decisions from ReviewService
 3. Implements configurable review policies (auto-approve, require review)
 4. Stores operator feedback for learning
 5. Routes approved threats to dissemination
@@ -369,32 +369,123 @@ def human_review_node(state: TIFDAState) -> Dict[str, Any]:
             "review_mode": "auto"
         })
     
-    # Threats requiring operator review (MOCK)
-    for threat in requires_review_threats:
-        logger.info(f"\n🔍 Reviewing: {threat.threat_source_id} ({threat.threat_level})")
-        logger.info(f"   Confidence: {threat.confidence:.2f}")
-        logger.info(f"   Reasoning: {threat.reasoning[:100]}...")
+    # Threats requiring operator review (REAL UI INTEGRATION)
+    if requires_review_threats:
+        logger.info(f"\n📤 Sending {len(requires_review_threats)} threats to UI for review")
         
-        # Get mock operator review
-        review_decision = _mock_operator_review(threat)
+        # Import ReviewService
+        from src.ui.review_service import ReviewService
+        review_service = ReviewService(config.shared_state_file)
         
-        logger.info(f"   ✅ Decision: {review_decision['action'].upper()}")
-        logger.info(f"   👤 Operator: {review_decision['operator_id']} ({review_decision['operator_rank']})")
-        logger.info(f"   💬 Comments: {review_decision['operator_comments']}")
+        # Prepare items for review
+        review_items = []
+        for threat in requires_review_threats:
+            review_items.append({
+                "item_id": threat.assessment_id,
+                "item_type": "threat_assessment",
+                "threat_level": threat.threat_level,
+                "threat_source_id": threat.threat_source_id,
+                "confidence": threat.confidence,
+                "reasoning": threat.reasoning,
+                "affected_entities": threat.affected_entities,
+                "distances_to_affected_km": threat.distances_to_affected_km,
+                "timestamp": threat.timestamp.isoformat(),
+                "added_at": datetime.utcnow().isoformat()
+            })
         
-        # Store review
-        review_log.append({
-            "assessment_id": threat.assessment_id,
-            "threat_source_id": threat.threat_source_id,
-            "threat_level": threat.threat_level,
-            **review_decision
-        })
+        # Send to review service
+        review_service.add_pending_items(review_items)
+        logger.info(f"✅ Items added to review queue")
         
-        # Categorize result
-        if review_decision["approved"]:
-            approved_threats.append(threat)
+        # Wait for decisions or timeout
+        timeout_seconds = config.auto_approve_timeout_seconds
+        wait_start = time.time()
+        
+        if timeout_seconds > 0:
+            logger.info(f"⏰ Waiting for operator decisions (timeout: {timeout_seconds}s)")
         else:
-            rejected_threats.append(threat)
+            logger.info("⏰ Waiting for operator decisions (no timeout)")
+        
+        # Poll for decisions
+        while True:
+            # Check for timeout
+            if timeout_seconds > 0:
+                elapsed = time.time() - wait_start
+                if elapsed >= timeout_seconds:
+                    logger.warning(f"⏰ Timeout reached ({timeout_seconds}s) - auto-approving pending items")
+                    review_service.auto_approve_timed_out_items(timeout_seconds)
+                    break
+            
+            # Check for decisions
+            decisions = review_service.get_decisions(clear_after_read=False)
+            
+            # Check if all items have decisions
+            decided_ids = {d["item_id"] for d in decisions}
+            pending_ids = {item["item_id"] for item in review_items}
+            
+            if pending_ids.issubset(decided_ids):
+                logger.info(f"✅ All {len(review_items)} items reviewed by operator")
+                # Clear decisions now that we have them
+                review_service.get_decisions(clear_after_read=True)
+                break
+            
+            # Wait a bit before checking again
+            time.sleep(1)
+        
+        # Process decisions
+        for threat in requires_review_threats:
+            # Find decision for this threat
+            decision = next(
+                (d for d in decisions if d["item_id"] == threat.assessment_id),
+                None
+            )
+            
+            if decision:
+                logger.info(f"\n✅ Operator decision for {threat.threat_source_id}")
+                logger.info(f"   Decision: {decision['decision'].upper()}")
+                logger.info(f"   Reviewer: {decision.get('reviewer_id', 'unknown')}")
+                logger.info(f"   Comments: {decision.get('comments', 'No comments')}")
+                
+                # Store review
+                review_log.append({
+                    "assessment_id": threat.assessment_id,
+                    "threat_source_id": threat.threat_source_id,
+                    "threat_level": threat.threat_level,
+                    "approved": decision["decision"] == "approve",
+                    "action": decision["decision"],
+                    "operator_id": decision.get("reviewer_id", config.reviewer_id),
+                    "operator_comments": decision.get("comments", ""),
+                    "review_timestamp": datetime.fromisoformat(decision["timestamp"]),
+                    "review_duration_sec": 0.0,  # Not tracking duration in v1
+                    "review_mode": "ui"
+                })
+                
+                # Categorize result
+                if decision["decision"] == "approve":
+                    approved_threats.append(threat)
+                elif decision["decision"] == "reject":
+                    rejected_threats.append(threat)
+                elif decision["decision"] == "flag":
+                    # For now, treat "flag" as approved but log it
+                    approved_threats.append(threat)
+                    logger.warning(f"🚩 Threat {threat.threat_source_id} FLAGGED for escalation")
+            else:
+                # Should not happen, but handle gracefully
+                logger.error(f"❌ No decision found for {threat.threat_source_id} - rejecting")
+                rejected_threats.append(threat)
+                
+                review_log.append({
+                    "assessment_id": threat.assessment_id,
+                    "threat_source_id": threat.threat_source_id,
+                    "threat_level": threat.threat_level,
+                    "approved": False,
+                    "action": "reject",
+                    "operator_id": "system_error",
+                    "operator_comments": "No operator decision received",
+                    "review_timestamp": datetime.utcnow(),
+                    "review_duration_sec": 0.0,
+                    "review_mode": "error"
+                })
     
     # ============ RESULTS ============
     

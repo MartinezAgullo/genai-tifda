@@ -131,11 +131,28 @@ class TIFDAConfig(BaseModel):
     enable_auto_dissemination: bool = Field(False, description="Auto-disseminate without review")
     enable_mqtt: bool = Field(True, description="Enable MQTT integration")
     
-    @field_validator("data_dir", "checkpoint_dir", "audit_log_dir")
+    # HITL Configuration
+    auto_approve_timeout_seconds: int = Field(
+        300,
+        description="Auto-approve pending items after N seconds (0 = disabled)"
+    )
+    shared_state_file: Path = Field(
+        Path("data/shared_state.json"),
+        description="Shared state file for pipeline <-> UI communication"
+    )
+    ui_refresh_interval: int = Field(5, description="UI polling interval in seconds")
+    ui_port: int = Field(7860, description="Gradio server port")
+    reviewer_id: str = Field("operator_alpha", description="Default reviewer ID")
+    
+    @field_validator("data_dir", "checkpoint_dir", "audit_log_dir", "shared_state_file")
     @classmethod
     def ensure_path_exists(cls, v: Path) -> Path:
         """Create directory if it doesn't exist"""
-        v.mkdir(parents=True, exist_ok=True)
+        # For shared_state_file, create parent directory only
+        if "shared_state" in str(v):
+            v.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            v.mkdir(parents=True, exist_ok=True)
         return v
 
 

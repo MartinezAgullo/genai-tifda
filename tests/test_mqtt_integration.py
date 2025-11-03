@@ -356,10 +356,10 @@ def run_all_tests():
     print()
     if failed == 0:
         print("🎉 All tests passed!")
-        print("\nNext steps:")
-        print("1. Configure recipients in config.py")
-        print("2. Run TIFDA pipeline with real sensor data")
-        print("3. Monitor MQTT topics with: mosquitto_sub -t 'tifda/#' -v")
+        # print("\nNext steps:")
+        # print("1. Configure recipients in config.py")
+        # print("2. Run TIFDA pipeline with real sensor data")
+        # print("3. Monitor MQTT topics with: mosquitto_sub -t 'tifda/#' -v")
     else:
         print(f"⚠️  {failed} test(s) failed")
         print("\nTroubleshooting:")
