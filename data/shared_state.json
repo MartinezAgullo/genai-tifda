@@ -1,6 +1,6 @@
 {
-    "pending_review_items": [],
-    "human_decisions": [],
-    "last_updated": null,
-    "pipeline_active": false
-  }
+  "pending_review_items": [],
+  "human_decisions": [],
+  "last_updated": "2025-11-04T12:25:27.430080",
+  "pipeline_active": true
+}
