@@ -6,35 +6,162 @@ Its main functions are:
 
 1. Ingest multimodal data from diverse sources.
 
-2. Convert this data into a valid format to be used as Common Operational Picture (COP) by the Battle Management System (BMS). Note that this is not a real COP but a toy-model one.
+2. Convert this data into a valid format to be used as Common Operational Picture (COP) by the Battle Management System (BMS). Note that this is not a real COP but a toy-model one. The COP is synchronised the one of an external service for mapping actors, [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes).
 
-3. Selectively distribute only the essential information to the relevant output actors, utilizing their specific formats.
+3. Selectively distribute only the essential information to the relevant output actors, utilizing their specific formats. 
 
 * * * * *
 
 ## ⚙️ Technical Details
+
+| Feature | Technology |
+|---------|------------|
+| **Framework** | LangGraph (multi-agent orchestration) |
+| **LLM** | OpenAI GPT-4o / Anthropic Claude |
+| **Integration** | MQTT broker, PostgreSQL + PostGIS, Gradio UI |
+| **Parsers** | ASTERIX, drone telemetry, radio intercepts, manual reports |
+| **Security** | Prompt injection detection, access control, honeypots |
+| **Visualization** | [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes) (Leaflet map) |
+| **Dependencies** | Managed with UV |
+
+
+* * * * *
+## 🚀 Quick Start
+
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/MartinezAgullo/genai-tifda.git
+cd genai-tifda
+
+
+# Install dependencies
+uv sync
+
+# Configure
+touch .env
+# Edit .env with your API keys
+```
+
+### Run TIFDA
+The first step is to run the interactive map for the COP. It can be dowlodad from [here](https://github.com/MartinezAgullo/mapa-puntos-interes).
+```bash
+# Terminal 1: Start map visualization
+cd <your-path-to-the-map-project>/mapa-puntos-interes
+docker compose up -d
+node scripts/init-db.js
+npm run dev
+
+# Terminal 2: Start HITL UI (optional)
+uv run python -m src.ui.gradio_interface
+
+# Terminal 3: Run pipeline
+uv run python -m tests.test_ui_hilt_radar
+```
+A mocked radar signal message is sent with test_ui_hilt_radar.py to start the TIFDA pipeline. 
+
+## ⚙️ Configuration
+
+Edit `src/core/init_config.py` to customize:
+
+- **LLM settings**: Model, temperature, provider
+- **HITL mode**: Enable/disable human review, timeout
+- **Integrations**: MQTT broker, mapa sync, ports
+- **Security**: Access levels, classification rules
+
+Example:
+```python
+config.llm.model = "gpt-4o"
+config.enable_human_review = True
+config.auto_approve_timeout_seconds = 300
+```
+
+
+* * * * *
+
+# 📂 Project Scaffolding
 ----------------------
-| Feature | Description |
-| --- | --- |
-| **Architecture** | Multi-Agent System |
-| **Agent Framework** | LangGraph |
-| **Inputs/Outputs** | Inputs are simulated and transmitted via an MQTT broker, mixing different signal types to create realistic, complex scenarios. Outputs are tailored to specific recipient formats. |
-| **Dependencies** | Managed using UV. |
-| **Visualization** |  Use external tool  [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes) to represent the COP in a map |
 
-- Security against prompt injection
-- Classification and access control system. Use of honehypots for enemies.
+```bash
+tifda/
+.
+├── data
+│   └── shared_state.json       # HITL state persistence
+├── mqtt
+│   ├── config
+│   │   └── mosquitto.conf      # MQTT broker config
+│   ├── data
+│   └── log
+├── output
+│   ├── dissemination_reports   # Generated reports
+│   └── threat_assessments      # Generated analysis
+├── pyproject.toml
+├── src
+│   ├── agents
+│   ├── core
+│   │   ├── config.py           # Configuration schema
+│   │   ├── constants.py
+│   │   ├── init_config.py      # User configuration
+│   │   └── state.py            # LangGraph state
+│   ├── integrations            # External services
+│   │   ├── cop_sync.py
+│   │   ├── mapa_client.py
+│   │   ├── mqtt_client.py
+│   │   └── mqtt_publisher.py
+│   ├── models                  # Data models
+│   │   ├── cop_entities.py
+│   │   ├── dissemination.py
+│   │   ├── human_feedback.py
+│   │   └── sensor_formats.py
+│   ├── nodes                   # Pipeline nodes
+│   │   ├── cop_merge_node.py
+│   │   ├── cop_normalizer_node.py
+│   │   ├── cop_update_node.py
+│   │   ├── dissemination_router_node.py
+│   │   ├── firewall_node.py
+│   │   ├── format_adapter_node.py
+│   │   ├── human_review_node.py
+│   │   ├── multimodal_parser_node.py
+│   │   ├── parser_node.py
+│   │   ├── threat_evaluator_node.py
+│   │   └── transmission_node.py
+│   ├── parsers                 # Format handlers
+│   │   ├── asterix_parser.py
+│   │   ├── base_parser.py
+│   │   ├── drone_parser.py
+│   │   ├── manual_parser.py
+│   │   ├── parser_factory.py
+│   │   └── radio_parser.py
+│   ├── security
+│   │   ├── REAMDE.md
+│   │   └── firewall.py         # Injection detection
+│   ├── tifda_app.py            # Main pipeline
+│   ├── tools                   # Multimodal processings
+│   │   ├── audio_tools.py
+│   │   ├── document_tools.py
+│   │   └── image_tools.py
+│   ├── ui
+│   │   ├── gradio_interface.py
+│   │   └── review_service.py   # State management
+│   └── visualization
+└── tests                       # Test different steps of the pipeline
+    ├── diagnostic_approved_threats.py
+    ├── test_flux.py
+    ├── test_human_review.py
+    ├── test_integrations.py
+    ├── test_mapa_sync.py
+    ├── test_mqtt_flux.py
+    ├── test_mqtt_integration.py
+    ├── test_parsers.py
+    ├── test_pipeline_visualization.py
+    ├── test_radar.py
+    └── test_ui_hilt_radar.py   # HITL integration
+```
 
 
 * * * * *
-# How to
 
-
-Configure from `src/core/init_config.py`
-
-* * * * *
-
-## 🏗️ TIFDA - Arquitectura Completa del Sistema
+# 🏗️ TIFDA - system Architecture
 ----------------------
 
 ```
@@ -324,71 +451,20 @@ Configure from `src/core/init_config.py`
 
 * * * * *
 
-## 📂 Project Scaffolding
-----------------------
-```
-.
-.
-├── data
-├── examples
-│   └── test_radar.py
-├── mqtt
-│   ├── scenarios
-│   └── sensor_simulators
-├── output
-│   ├── dissemination_reports
-│   └── threat_assessments
-├── pyproject.toml
-└── src
-    ├── agents
-    ├── core
-    │   ├── config.py
-    │   ├── constants.py
-    │   └── state.py
-    ├── integrations
-    │   ├── cop_sync.py
-    │   └── mapa_client.py
-    ├── models
-    │   ├── cop_entities.py
-    │   ├── dissemination.py
-    │   ├── human_feedback.py
-    │   └── sensor_formats.py
-    ├── nodes
-    │   ├── cop_merge_node.py
-    │   ├── cop_normalizer_node.py
-    │   ├── cop_update_node.py
-    │   ├── dissemination_router_node.py
-    │   ├── firewall_node.py
-    │   ├── format_adapter_node.py
-    │   ├── human_review_node.py
-    │   ├── multimodal_parser_node.py
-    │   ├── parser_node.py
-    │   ├── threat_evaluator_node.py
-    │   └── transmission_node.py
-    ├── parsers
-    │   ├── asterix_parser.py
-    │   ├── base_parser.py
-    │   ├── drone_parser.py
-    │   ├── manual_parser.py
-    │   ├── parser_factory.py
-    │   └── radio_parser.py
-    ├── security
-    │   ├── REAMDE.md
-    │   └── firewall.py
-    ├── tifda_app.py
-    ├── tools
-    │   ├── audio_tools.py
-    │   ├── document_tools.py
-    │   └── image_tools.py
-    ├── ui
-    └── visualization
-```
-* * * * *
-
-## Itegration with COP visualization tool
+## Integration with COP Visualization Tool
 ----------------------
 
 Integration with [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes)
+
+<!-- cd /Users/pablo/Desktop/Scripts/mapa-puntos-interes -->
+```bash
+cd mapa-puntos-interes
+docker compose up -d
+node scripts/init-db.js
+npm run dev
+```
+
+TIFDA automatically syncs entities via `cop_sync.py`.
 
 
 ```
