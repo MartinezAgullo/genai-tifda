@@ -44,21 +44,46 @@ touch .env
 ```
 
 ### Run TIFDA
-The first step is to run the interactive map for the COP. It can be dowlodad from [here](https://github.com/MartinezAgullo/mapa-puntos-interes).
+
+#### Prerequisites
+1. **Map visualization** - Download [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes)
+2. **PostgreSQL** - Required for map backend
+3. **MQTT Broker** - Required for message dissemination
+
+<!-- The first step is to run the interactive map for the COP. It can be dowlodad from [here](https://github.com/MartinezAgullo/mapa-puntos-interes). -->
+
+#### Complete Startup Sequence
+
 ```bash
-# Terminal 1: Start map visualization
+# Terminal 1: Start PostgreSQL & map visualization
 cd <your-path-to-the-map-project>/mapa-puntos-interes
-docker compose up -d
-node scripts/init-db.js
-npm run dev
+docker compose up -d        # Start PostgreSQL
+node scripts/init-db.js     # Initialize database (first time only)
+npm run dev                 # Start map server → http://localhost:3000
 
-# Terminal 2: Start HITL UI (optional)
-uv run python -m src.ui.gradio_interface
 
-# Terminal 3: Run pipeline
-uv run python -m tests.test_ui_hilt_radar
+# Terminal 2: Start MQTT broker
+cd <tifda-project>
+mosquitto -c mqtt/config/mosquitto.conf
+
+
+# Terminal 3: Subscribe to MQTT messages (optional - to see outputs)
+mosquitto_sub -t 'tifda/output/#' -v
+# mosquitto_sub -t 'tifda/output/dissemination_reports/#' -v
+
+
+# Terminal 4: Start HITL UI (optional - for human review)
+uv run python -m src.ui.gradio_interface    # UI → http://localhost:7860
+
+
+# Terminal 5: Run TIFDA pipeline
+uv run python -m tests.test_ui_hilt_radar   # Send test radar data
 ```
 A mocked radar signal message is sent with test_ui_hilt_radar.py to start the TIFDA pipeline. 
+
+
+![HITL UI](assets/images/tifda-ui-hilt.png)
+
 
 ## ⚙️ Configuration
 
@@ -79,7 +104,7 @@ config.auto_approve_timeout_seconds = 300
 
 * * * * *
 
-# 📂 Project Scaffolding
+## 📂 Project Scaffolding
 ----------------------
 
 ```bash
@@ -161,7 +186,7 @@ tifda/
 
 * * * * *
 
-# 🏗️ TIFDA - system Architecture
+## 🏗️ System Architecture
 ----------------------
 
 ```
@@ -454,7 +479,7 @@ tifda/
 ## Integration with COP Visualization Tool
 ----------------------
 
-Integration with [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes)
+This project integrates the [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes) tool.
 
 <!-- cd /Users/pablo/Desktop/Scripts/mapa-puntos-interes -->
 ```bash
@@ -463,6 +488,8 @@ docker compose up -d
 node scripts/init-db.js
 npm run dev
 ```
+![View of the map application](assets/images/mapa-puntos-interes-front.png)
+
 
 TIFDA automatically syncs entities via `cop_sync.py`.
 
@@ -502,6 +529,11 @@ TIFDA automatically syncs entities via `cop_sync.py`.
 └─────────────────────────────────────────────────────────┘
 ```
 
+---
+
+## 📄 Licencia
+
+GNU General Public License (GPL) 3.0
 
 
 <!-- 
