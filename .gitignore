@@ -55,6 +55,13 @@ htmlcov/
 # Compiled output directories
 /output/
 /data/  # Generally ignore large, derived data, or raw data you don't track
+data/mosquitto.db
+data/mosquitto.db*
+mqtt/data/
+mqtt/log/
+*.db
+*.db-shm
+*.db-wal
 
 # Temporary files (e.g., Gradio/UI caches, logs)
 *.log
