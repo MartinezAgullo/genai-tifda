@@ -165,10 +165,9 @@ tifda/
 │   │   ├── audio_tools.py
 │   │   ├── document_tools.py
 │   │   └── image_tools.py
-│   ├── ui
-│   │   ├── gradio_interface.py
-│   │   └── review_service.py   # State management
-│   └── visualization
+│   └── ui
+│       ├── gradio_interface.py
+│       └── review_service.py   # State management
 └── tests                       # Test different steps of the pipeline
     ├── diagnostic_approved_threats.py
     ├── test_flux.py
@@ -537,5 +536,5 @@ GNU General Public License (GPL) 3.0
 
 
 <!-- 
-tree -I "__pycache__|__init__.py|uv.lock|README.md|tests|*.log|*.db*|*.png|*.PNG" 
+tree -I "__pycache__|__init__.py|uv.lock|visualization|README.md|tests|assets|*.log|*.db*|*.png|*.PNG" 
 -->
