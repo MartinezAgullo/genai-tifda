@@ -31,7 +31,7 @@ class HumanFeedback(BaseModel):
     # Human's evaluation
     approved: bool = Field(..., description="Whether human approved the decision")
     confidence: Optional[float] = Field(
-        None,  # Era obligatorio
+        None,
         ge=0.0,
         le=1.0,
         description="Human's confidence in their own judgment (optional)"

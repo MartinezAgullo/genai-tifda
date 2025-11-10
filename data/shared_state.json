@@ -1,23 +1,6 @@
 {
-  "pending_review_items": [
-    {
-      "item_id": "threat_radar_test_01_MISSILE_001_1762782766",
-      "item_type": "threat_assessment",
-      "threat_level": "critical",
-      "threat_source_id": "radar_test_01_MISSILE_001",
-      "confidence": 0.8,
-      "reasoning": "The entity is classified as hostile and is an aircraft traveling at a high speed of 2000 km/h, heading directly towards friendly assets. With a proximity of only 14.0 km to the friendly fighter, this poses an immediate danger, especially given the confidence level of 0.80 in the radar tracking. Urgent response is required to intercept or mitigate the threat.",
-      "affected_entities": [
-        "radar_test_01_FRIENDLY_FIGHTER_001"
-      ],
-      "distances_to_affected_km": {
-        "radar_test_01_FRIENDLY_FIGHTER_001": 14.041181797483405
-      },
-      "timestamp": "2025-11-10T13:52:46.762360+00:00",
-      "added_at": "2025-11-10T13:52:46.769703+00:00"
-    }
-  ],
+  "pending_review_items": [],
   "human_decisions": [],
-  "last_updated": "2025-11-10T13:52:46.769940+00:00",
+  "last_updated": "2025-11-10T17:49:42.693635+00:00",
   "pipeline_active": true
 }
