@@ -7,7 +7,7 @@ Abstract base class for all format-specific parsers.
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models import EntityCOP, Location, SensorMessage
 

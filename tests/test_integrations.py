@@ -12,7 +12,7 @@ project_root = os.path.join(current_dir, '..')
 sys.path.insert(0, project_root)
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch, MagicMock
 
 from src.models import EntityCOP, Location
@@ -150,7 +150,7 @@ class TestCOPSync:
             entity_id="radar_01_T001",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.9,
@@ -182,7 +182,7 @@ class TestCOPSync:
             entity_id="test_001",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             confidence=0.8,
             source_sensors=["test"]
@@ -213,7 +213,7 @@ class TestCOPSync:
                 entity_id=f"test_{i}",
                 entity_type="aircraft",
                 location=Location(lat=39.5, lon=-0.4),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 classification="unknown",
                 confidence=0.8,
                 source_sensors=["test"]
@@ -241,7 +241,7 @@ class TestEntityConversion:
             entity_id="test",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             confidence=0.8,
             source_sensors=["test"]
@@ -256,7 +256,7 @@ class TestEntityConversion:
             entity_id="test",
             entity_type="tank",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             confidence=0.9,
             source_sensors=["test"]
@@ -280,7 +280,7 @@ class TestEntityConversion:
                 entity_id="test",
                 entity_type="aircraft",
                 location=Location(lat=39.5, lon=-0.4),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 classification=classification,
                 confidence=0.8,
                 source_sensors=["test"]
@@ -295,7 +295,7 @@ class TestEntityConversion:
             entity_id="test",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.92,

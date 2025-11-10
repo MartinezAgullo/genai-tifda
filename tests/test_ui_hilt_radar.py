@@ -37,7 +37,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from src.core.init_config import initialize_config
 from src.tifda_app import run_pipeline
 from src.models import SensorMessage
@@ -68,7 +68,7 @@ def test_hitl_critical_threat():
     sensor_msg = SensorMessage(
         sensor_id="radar_valencia_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "system_id": "ES_RAD_VALENCIA",
@@ -174,7 +174,7 @@ def test_hitl_multiple_threats():
     sensor_msg = SensorMessage(
         sensor_id="radar_coastal_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "system_id": "ES_RAD_COASTAL",

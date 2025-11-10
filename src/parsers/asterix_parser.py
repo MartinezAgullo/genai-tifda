@@ -7,7 +7,7 @@ ASTERIX is the standard for radar data exchange in European airspace.
 """
 
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models import EntityCOP, Location, SensorMessage
 from src.parsers.base_parser import BaseParser

@@ -17,7 +17,7 @@ Node Signature:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 from langsmith import traceable
@@ -246,7 +246,7 @@ def parser_node(state: TIFDAState) -> Dict[str, Any]:
         sensor_metadata = state.get("sensor_metadata", {})
         sensor_metadata.update({
             "parser_used": parser_name,
-            "parsed_at": datetime.utcnow().isoformat(),
+            "parsed_at": datetime.now(timezone.utc).isoformat(),
             "entity_count": entity_count,
             "needs_multimodal": needs_multimodal
         })
@@ -353,7 +353,7 @@ def test_parser_node():
     radar_msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "system_id": "ES_RAD_101",
@@ -390,7 +390,7 @@ def test_parser_node():
     drone_msg = SensorMessage(
         sensor_id="drone_alpha",
         sensor_type="drone",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "drone_id": "DRONE_ALPHA_01",
             "flight_mode": "auto",
@@ -424,7 +424,7 @@ def test_parser_node():
     manual_msg = SensorMessage(
         sensor_id="operator_charlie",
         sensor_type="manual",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "report_id": "SPOTREP_001",
             "report_type": "SPOTREP",

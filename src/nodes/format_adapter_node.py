@@ -31,7 +31,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import xml.etree.ElementTree as ET
 
@@ -377,7 +377,7 @@ def format_adapter_node(state: TIFDAState) -> Dict[str, Any]:
                 "format": target_format,
                 "priority": message.content.get('priority'),
                 "requires_acknowledgment": message.content.get('requires_acknowledgment'),
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(timezone.utc),
                 "content": formatted_content
             }
             
@@ -392,7 +392,7 @@ def format_adapter_node(state: TIFDAState) -> Dict[str, Any]:
                 "recipient_id": message.recipient_id,
                 "target_format": target_format,
                 "content_size_bytes": len(str(formatted_content)),
-                "timestamp": datetime.utcnow()
+                "timestamp": datetime.now(timezone.utc)
             })
             
         except Exception as e:
@@ -550,9 +550,9 @@ def test_format_adapter_node():
                 threat_source_id="hostile_aircraft_001",
                 reasoning="Hostile aircraft on intercept course",
                 confidence=0.95,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             ),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             priority="critical",
             requires_acknowledgment=True
         ),
@@ -569,9 +569,9 @@ def test_format_adapter_node():
                 threat_source_id="hostile_aircraft_001",
                 reasoning="Hostile aircraft on intercept course",
                 confidence=0.95,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             ),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             priority="critical",
             requires_acknowledgment=True
         ),
@@ -588,9 +588,9 @@ def test_format_adapter_node():
                 threat_source_id="hostile_vehicle_002",
                 reasoning="Hostile ground vehicle approaching",
                 confidence=0.85,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             ),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             priority="high",
             requires_acknowledgment=True
         )

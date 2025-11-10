@@ -19,7 +19,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.join(current_dir, '..')
 sys.path.insert(0, project_root)
 
-from datetime import datetime
+from datetime import datetime, timezone
 from src.models import EntityCOP, Location
 from src.integrations import get_mapa_client, get_cop_sync
 
@@ -56,7 +56,7 @@ def test_single_entity_sync():
         entity_id="test_radar_T001",
         entity_type="aircraft",
         location=Location(lat=39.5, lon=-0.4, alt=5000),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         classification="hostile",
         information_classification="SECRET",
         confidence=0.9,
@@ -114,7 +114,7 @@ def test_batch_sync():
                 lat=39.5 + (i * 0.1),
                 lon=-0.4 + (i * 0.1)
             ),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification=["friendly", "hostile", "unknown", "neutral"][i % 4],
             information_classification="CONFIDENTIAL",
             confidence=0.8 + (i * 0.02),
@@ -152,7 +152,7 @@ def test_update_entity():
         entity_id="test_update_001",
         entity_type="aircraft",
         location=Location(lat=39.5, lon=-0.4),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         classification="unknown",
         confidence=0.7,
         source_sensors=["test"]
@@ -202,7 +202,7 @@ def test_remove_entity():
         entity_id=entity_id,
         entity_type="aircraft",
         location=Location(lat=39.5, lon=-0.4),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         classification="neutral",
         confidence=0.8,
         source_sensors=["test"]

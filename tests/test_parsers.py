@@ -6,7 +6,7 @@ Unit tests for all parsers.
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models import SensorMessage, Location
 from src.parsers import (
@@ -28,7 +28,7 @@ def test_asterix_parser_can_parse():
     valid_msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "tracks": []
@@ -40,7 +40,7 @@ def test_asterix_parser_can_parse():
     invalid_msg = SensorMessage(
         sensor_id="drone_01",
         sensor_type="drone",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={"format": "asterix", "tracks": []}
     )
     assert parser.can_parse(invalid_msg) is False
@@ -54,7 +54,7 @@ def test_asterix_parser_validate():
     valid_msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "tracks": [
@@ -74,7 +74,7 @@ def test_asterix_parser_validate():
     invalid_msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={"format": "asterix"}
     )
     is_valid, error = parser.validate(invalid_msg)
@@ -89,7 +89,7 @@ def test_asterix_parser_parse():
     msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "system_id": "ES_RAD_101",
@@ -130,7 +130,7 @@ def test_drone_parser_can_parse():
     valid_msg = SensorMessage(
         sensor_id="drone_alpha",
         sensor_type="drone",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "latitude": 39.4762,
             "longitude": -0.3747
@@ -142,7 +142,7 @@ def test_drone_parser_can_parse():
     invalid_msg = SensorMessage(
         sensor_id="drone_alpha",
         sensor_type="drone",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={"drone_id": "DRONE_01"}
     )
     assert parser.can_parse(invalid_msg) is False
@@ -155,7 +155,7 @@ def test_drone_parser_parse():
     msg = SensorMessage(
         sensor_id="drone_alpha",
         sensor_type="drone",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "drone_id": "DRONE_ALPHA_01",
             "latitude": 39.4762,
@@ -189,7 +189,7 @@ def test_radio_parser_can_parse():
     valid_msg = SensorMessage(
         sensor_id="radio_bravo",
         sensor_type="radio",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "station_id": "INTERCEPT_01",
             "frequency_mhz": 145.500,
@@ -206,7 +206,7 @@ def test_radio_parser_parse_with_location():
     msg = SensorMessage(
         sensor_id="radio_bravo",
         sensor_type="radio",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "station_id": "INTERCEPT_BRAVO_01",
             "frequency_mhz": 145.500,
@@ -235,7 +235,7 @@ def test_manual_parser_can_parse():
     valid_msg = SensorMessage(
         sensor_id="operator_charlie",
         sensor_type="manual",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "operator_name": "Cpt. Smith",
             "content": "Aircraft spotted",
@@ -252,7 +252,7 @@ def test_manual_parser_parse():
     msg = SensorMessage(
         sensor_id="operator_charlie",
         sensor_type="manual",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "report_id": "SPOTREP_001",
             "report_type": "SPOTREP",
@@ -284,7 +284,7 @@ def test_parser_factory_get_parser():
     asterix_msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={"format": "asterix", "tracks": []}
     )
     parser = factory.get_parser(asterix_msg)
@@ -294,7 +294,7 @@ def test_parser_factory_get_parser():
     drone_msg = SensorMessage(
         sensor_id="drone_01",
         sensor_type="drone",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={"latitude": 39.5, "longitude": -0.4}
     )
     parser = factory.get_parser(drone_msg)
@@ -308,7 +308,7 @@ def test_parser_factory_parse():
     msg = SensorMessage(
         sensor_id="radar_01",
         sensor_type="radar",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         data={
             "format": "asterix",
             "tracks": [

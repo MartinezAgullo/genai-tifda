@@ -6,7 +6,7 @@ LangGraph state definition for the TIFDA pipeline.
 This is the main data structure that flows through all graph nodes.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Dict, List, Optional, Any
 from typing import TypedDict
 import operator
@@ -166,7 +166,7 @@ def create_initial_state() -> TIFDAState:
     return TIFDAState(
         # COP
         cop_entities={},
-        cop_last_global_update=datetime.utcnow(),
+        cop_last_global_update=datetime.now(timezone.utc),
         
         # Current event
         current_sensor_event=None,
@@ -204,7 +204,7 @@ def create_initial_state() -> TIFDAState:
         decision_reasoning="",
         decision_log=[],
         processing_metadata={
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "version": "0.1.0"
         },
         
@@ -250,7 +250,7 @@ def create_state_from_sensor_event(
         state["cop_entities"] = existing_cop
     
     # Set processing metadata
-    state["processing_metadata"]["event_received_at"] = datetime.utcnow().isoformat()
+    state["processing_metadata"]["event_received_at"] = datetime.now(timezone.utc).isoformat()
     state["processing_metadata"]["sensor_id"] = sensor_event.sensor_id
     
     return state
@@ -281,7 +281,7 @@ def add_entity_to_cop(state: TIFDAState, entity: EntityCOP) -> None:
         entity: Entity to add/update
     """
     state["cop_entities"][entity.entity_id] = entity
-    state["cop_last_global_update"] = datetime.utcnow()
+    state["cop_last_global_update"] = datetime.now(timezone.utc)
     state["map_update_trigger"] += 1  # Trigger UI refresh
 
 
@@ -298,7 +298,7 @@ def remove_entity_from_cop(state: TIFDAState, entity_id: str) -> bool:
     """
     if entity_id in state["cop_entities"]:
         del state["cop_entities"][entity_id]
-        state["cop_last_global_update"] = datetime.utcnow()
+        state["cop_last_global_update"] = datetime.now(timezone.utc)
         state["map_update_trigger"] += 1
         return True
     return False
@@ -370,7 +370,7 @@ def add_notification(state: TIFDAState, message: str) -> None:
         state: Current TIFDA state
         message: Notification message
     """
-    timestamp = datetime.utcnow().strftime("%H:%M:%S")
+    timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
     state["notification_queue"].append(f"[{timestamp}] {message}")
 
 
@@ -392,7 +392,7 @@ def log_decision(
         data: Additional data about the decision
     """
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "node": node_name,
         "decision_type": decision_type,
         "reasoning": reasoning,

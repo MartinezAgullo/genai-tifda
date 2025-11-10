@@ -7,7 +7,7 @@ Data structures for human-in-the-loop review and feedback.
 Used for model-based reflex learning.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field
 

@@ -22,7 +22,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 from langsmith import traceable
@@ -451,7 +451,7 @@ No threat assessment required.
                 continue
             
             # Create ThreatAssessment
-            assessment_id = f"threat_{entity.entity_id}_{int(datetime.utcnow().timestamp())}"
+            assessment_id = f"threat_{entity.entity_id}_{int(datetime.now(timezone.utc).timestamp())}"
             
             # Calculate distances to affected entities (nearby friendlies)
             distances_to_affected = {}
@@ -469,7 +469,7 @@ No threat assessment required.
                 threat_source_id=entity.entity_id,
                 reasoning=parsed["reasoning"],
                 confidence=parsed["confidence"],
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 distances_to_affected_km=distances_to_affected if distances_to_affected else None
             )
             
@@ -633,7 +633,7 @@ def test_threat_evaluator_node():
             entity_id="base_alpha",
             entity_type="base",
             location=Location(lat=39.500, lon=-0.400),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="friendly",
             information_classification="SECRET",
             confidence=1.0,
@@ -647,7 +647,7 @@ def test_threat_evaluator_node():
             entity_id="radar_01_T001",
             entity_type="aircraft",
             location=Location(lat=39.520, lon=-0.420, alt=5000),  # ~3km from base
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.85,

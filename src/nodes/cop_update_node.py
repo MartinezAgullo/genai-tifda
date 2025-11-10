@@ -22,7 +22,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langsmith import traceable
 
@@ -197,7 +197,7 @@ def cop_update_node(state: TIFDAState) -> Dict[str, Any]:
     
     # ============ UPDATE TIMESTAMPS & TRIGGERS ============
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     current_trigger = state.get("map_update_trigger", 0)
     new_trigger = current_trigger + 1
     
@@ -341,7 +341,7 @@ def test_cop_update_node():
             entity_id="radar_01_T001",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             information_classification="SECRET",
             confidence=0.8,
@@ -351,7 +351,7 @@ def test_cop_update_node():
             entity_id="radar_01_T002",
             entity_type="ground_vehicle",
             location=Location(lat=39.6, lon=-0.5),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="CONFIDENTIAL",
             confidence=0.75,
@@ -397,7 +397,7 @@ def test_cop_update_node():
             entity_id="radar_01_T001",  # Same ID - UPDATE
             entity_type="aircraft",
             location=Location(lat=39.501, lon=-0.401, alt=5100),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",  # Updated classification
             information_classification="SECRET",
             confidence=0.85,  # Boosted confidence
@@ -431,7 +431,7 @@ def test_cop_update_node():
             entity_id="radar_01_T001",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             information_classification="SECRET",
             confidence=0.8,
@@ -446,7 +446,7 @@ def test_cop_update_node():
             entity_id="radar_01_T001",
             entity_type="aircraft",
             location=Location(lat=39.501, lon=-0.401),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.9,
@@ -457,7 +457,7 @@ def test_cop_update_node():
             entity_id="drone_alpha_vehicle_01",
             entity_type="ground_vehicle",
             location=Location(lat=39.6, lon=-0.5),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.85,

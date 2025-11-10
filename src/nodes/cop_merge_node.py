@@ -25,7 +25,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List, Tuple, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 from langsmith import traceable
@@ -520,7 +520,7 @@ def test_cop_merge_node():
             entity_id="radar_02_T002",
             entity_type="aircraft",
             location=Location(lat=40.000, lon=-1.000),  # Far away
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             information_classification="CONFIDENTIAL",
             confidence=0.75,
@@ -547,7 +547,7 @@ def test_cop_merge_node():
             entity_id="radar_01_T001",
             entity_type="ground_vehicle",
             location=Location(lat=39.500, lon=-0.400),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.8,
@@ -562,7 +562,7 @@ def test_cop_merge_node():
             entity_id="drone_alpha_vehicle_01",
             entity_type="ground_vehicle",
             location=Location(lat=39.501, lon=-0.401),  # Close to existing
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.85,
@@ -573,7 +573,7 @@ def test_cop_merge_node():
             entity_id="drone_alpha_vehicle_02",
             entity_type="ground_vehicle",
             location=Location(lat=39.600, lon=-0.500),  # Different location
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.8,

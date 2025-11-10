@@ -17,7 +17,7 @@ Features:
 import gradio as gr
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Tuple
 import sys
 
@@ -321,7 +321,7 @@ def approve_threat(threat_id: str, comments: str) -> Tuple[str, str, str]:
         "decision": "approve",
         "comments": comments or "Approved by operator",
         "reviewer_id": config.reviewer_id,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     try:
@@ -363,7 +363,7 @@ def reject_threat(threat_id: str, comments: str) -> Tuple[str, str, str]:
         "decision": "reject",
         "comments": comments or "Rejected by operator",
         "reviewer_id": config.reviewer_id,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     try:
@@ -405,7 +405,7 @@ def flag_threat(threat_id: str, comments: str) -> Tuple[str, str, str]:
         "decision": "flag",
         "comments": comments or "Flagged for escalation",
         "reviewer_id": config.reviewer_id,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
     try:
@@ -447,7 +447,7 @@ def approve_all_threats() -> Tuple[str, str]:
             "decision": "approve",
             "comments": "Bulk approved by operator",
             "reviewer_id": config.reviewer_id,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         })
     
     try:
@@ -487,7 +487,7 @@ def refresh_ui() -> Tuple[str, str, str]:
     Returns:
         Tuple of (statistics, threat list, threat details)
     """
-    ui_state.last_refresh = datetime.utcnow()
+    ui_state.last_refresh = datetime.now(timezone.utc)
     
     return (
         format_statistics_banner(),

@@ -9,7 +9,7 @@ Add this code to your gradio_interface.py in the create_interface() function.
 """
 
 import gradio as gr
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any
 
 # ==================== PIPELINE MONITORING ====================
@@ -24,7 +24,7 @@ class PipelineMonitor:
     def add_event(self, node: str, event_type: str, data: Dict[str, Any]):
         """Add a pipeline event"""
         self.events.append({
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "node": node,
             "event_type": event_type,
             "data": data
@@ -330,7 +330,7 @@ def create_pipeline_visualization_tab():
 To add this to your gradio_interface.py:
 
 1. Add these imports at the top:
-   from datetime import datetime
+   from datetime import datetime, timezone
    from typing import Dict, List, Any
 
 2. Copy the PipelineMonitor class and format functions

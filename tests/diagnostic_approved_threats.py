@@ -7,7 +7,7 @@ from src.core.config import get_config, register_recipient, RecipientConfigModel
 from src.core.state import create_initial_state
 from src.nodes.threat_evaluator_node import threat_evaluator_node
 from src.nodes.human_review_node import human_review_node
-from datetime import datetime
+from datetime import datetime, timezone
 
 print("=" * 70)
 print("🔍 DIAGNOSTIC: Tracking approved_threats through pipeline")
@@ -51,7 +51,7 @@ test_threat = ThreatAssessment(
     threat_source_id="hostile_aircraft_001",
     reasoning="Test hostile aircraft approaching base",
     confidence=0.92,
-    timestamp=datetime.utcnow()
+    timestamp=datetime.now(timezone.utc)
 )
 
 state["current_threats"] = [test_threat]

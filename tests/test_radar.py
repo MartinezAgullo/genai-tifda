@@ -2,7 +2,7 @@
 import os
 from dotenv import load_dotenv
 
-from datetime import datetime
+from datetime import datetime, timezone
 from src.tifda_app import tifda_app
 from src.core.state import create_state_from_sensor_event
 from src.models import SensorMessage
@@ -14,7 +14,7 @@ load_dotenv()
 sensor_msg = SensorMessage(
     sensor_id="radar_01",
     sensor_type="radar",
-    timestamp=datetime.utcnow(),
+    timestamp=datetime.now(timezone.utc),
     data={
         "format": "asterix",
         "tracks": [

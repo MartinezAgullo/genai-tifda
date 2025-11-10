@@ -16,7 +16,7 @@ import fcntl
 import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ class ReviewService:
         
         # Add new items
         state["pending_review_items"].extend(items)
-        state["last_updated"] = datetime.utcnow().isoformat()
+        state["last_updated"] = datetime.now(timezone.utc).isoformat()
         state["pipeline_active"] = True
         
         self.write_state(state)
@@ -166,7 +166,7 @@ class ReviewService:
         if clear_after_read and decisions:
             # Clear decisions after pipeline reads them
             state["human_decisions"] = []
-            state["last_updated"] = datetime.utcnow().isoformat()
+            state["last_updated"] = datetime.now(timezone.utc).isoformat()
             self.write_state(state)
             
             logger.info(f"✅ Pipeline retrieved {len(decisions)} decisions")
@@ -179,7 +179,7 @@ class ReviewService:
         cleared_count = len(state["pending_review_items"])
         
         state["pending_review_items"] = []
-        state["last_updated"] = datetime.utcnow().isoformat()
+        state["last_updated"] = datetime.now(timezone.utc).isoformat()
         self.write_state(state)
         
         logger.info(f"🗑️  Cleared {cleared_count} pending items")
@@ -220,7 +220,7 @@ class ReviewService:
             if item.get("item_id") != item_id
         ]
         
-        state["last_updated"] = datetime.utcnow().isoformat()
+        state["last_updated"] = datetime.now(timezone.utc).isoformat()
         
         self.write_state(state)
         
@@ -245,7 +245,7 @@ class ReviewService:
             if item.get("item_id") not in decided_ids
         ]
         
-        state["last_updated"] = datetime.utcnow().isoformat()
+        state["last_updated"] = datetime.now(timezone.utc).isoformat()
         
         self.write_state(state)
         
@@ -267,7 +267,7 @@ class ReviewService:
             return 0  # Timeout disabled
         
         state = self.read_state()
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         auto_approved = []
         
         remaining_items = []
@@ -342,13 +342,13 @@ def test_review_service():
                 "item_id": "threat_001",
                 "item_type": "threat_assessment",
                 "threat_level": "critical",
-                "added_at": datetime.utcnow().isoformat()
+                "added_at": datetime.now(timezone.utc).isoformat()
             },
             {
                 "item_id": "threat_002",
                 "item_type": "threat_assessment",
                 "threat_level": "high",
-                "added_at": datetime.utcnow().isoformat()
+                "added_at": datetime.now(timezone.utc).isoformat()
             }
         ]
         service.add_pending_items(items)
@@ -370,7 +370,7 @@ def test_review_service():
             "decision": "approve",
             "comments": "Confirmed critical threat",
             "reviewer_id": "operator_alpha",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         service.submit_decision(decision)
         

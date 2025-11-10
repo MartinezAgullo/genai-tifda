@@ -5,7 +5,7 @@ Dissemination Models
 Data structures for information dissemination decisions and outgoing messages.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Literal, Any
 from pydantic import BaseModel, Field
 

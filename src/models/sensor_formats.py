@@ -6,7 +6,7 @@ Sensor Input Format Models
 Data structures for different sensor input formats.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field
 

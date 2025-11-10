@@ -19,7 +19,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langsmith import traceable
 
@@ -461,7 +461,7 @@ def test_cop_normalizer_node():
             entity_id="T001",  # Missing sensor prefix
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             information_classification="SECRET",
             confidence=0.9,
@@ -471,7 +471,7 @@ def test_cop_normalizer_node():
             entity_id="T002",
             entity_type="ground_vehicle",
             location=Location(lat=39.6, lon=-0.5),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="CONFIDENTIAL",
             confidence=0.85,
@@ -501,7 +501,7 @@ def test_cop_normalizer_node():
             entity_id="T003",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="invalid_classification",  # INVALID!
             information_classification="SECRET",
             confidence=0.9,
@@ -529,7 +529,7 @@ def test_cop_normalizer_node():
             entity_id="T004",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="friendly",
             information_classification="UNCLASSIFIED",
             confidence=1.5,  # > 1.0, should be clamped

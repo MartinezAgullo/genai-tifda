@@ -6,7 +6,7 @@ Synchronizes TIFDA's in-memory COP state with mapa-puntos-interes.
 """
 
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langsmith import traceable
 
@@ -140,7 +140,7 @@ class COPSync:
             self.sync_stats['total_updated'] += stats['updated']
             self.sync_stats['total_errors'] += stats['failed']
             self.sync_stats['total_syncs'] += 1
-            self.last_sync = datetime.utcnow()
+            self.last_sync = datetime.now(timezone.utc)
             
             return {
                 'success': True,

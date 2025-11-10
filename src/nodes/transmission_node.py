@@ -9,7 +9,7 @@ Eleventh and FINAL node in TIFDA pipeline - REAL message transmission.
 
 import logging
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 from langsmith import traceable
@@ -123,7 +123,7 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
                 recipient_id=recipient_id,
                 format_type=formatted_message["format"],
                 content=formatted_message["content"],
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
             
             # Publish
@@ -165,7 +165,7 @@ def transmission_node(state: TIFDAState) -> Dict[str, Any]:
                 "recipient_id": recipient_id,
                 "success": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             })
     
     # Stats

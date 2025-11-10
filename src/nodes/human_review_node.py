@@ -31,7 +31,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 from langsmith import traceable
@@ -167,7 +167,7 @@ def _mock_operator_review(threat: ThreatAssessment) -> Dict[str, Any]:
         "operator_id": MOCK_OPERATOR_ID,
         "operator_rank": MOCK_OPERATOR_RANK,
         "operator_comments": comments,
-        "review_timestamp": datetime.utcnow(),
+        "review_timestamp": datetime.now(timezone.utc),
         "review_duration_sec": review_end - review_start,
         "review_mode": "mock"  # Indicates this was a simulated review
     }
@@ -364,7 +364,7 @@ def human_review_node(state: TIFDAState) -> Dict[str, Any]:
             "action": "auto_approve",
             "operator_id": "system",
             "operator_comments": f"Auto-approved based on policy: {REVIEW_POLICY}",
-            "review_timestamp": datetime.utcnow(),
+            "review_timestamp": datetime.now(timezone.utc),
             "review_duration_sec": 0.0,
             "review_mode": "auto"
         })
@@ -390,7 +390,7 @@ def human_review_node(state: TIFDAState) -> Dict[str, Any]:
                 "affected_entities": threat.affected_entities,
                 "distances_to_affected_km": threat.distances_to_affected_km,
                 "timestamp": threat.timestamp.isoformat(),
-                "added_at": datetime.utcnow().isoformat()
+                "added_at": datetime.now(timezone.utc).isoformat()
             })
         
         # Send to review service
@@ -482,7 +482,7 @@ def human_review_node(state: TIFDAState) -> Dict[str, Any]:
                     "action": "reject",
                     "operator_id": "system_error",
                     "operator_comments": "No operator decision received",
-                    "review_timestamp": datetime.utcnow(),
+                    "review_timestamp": datetime.now(timezone.utc),
                     "review_duration_sec": 0.0,
                     "review_mode": "error"
                 })
@@ -643,7 +643,7 @@ def test_human_review_node():
             threat_source_id="hostile_aircraft_001",
             reasoning="Hostile aircraft on intercept course with base",
             confidence=0.95,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         ),
         ThreatAssessment(
             assessment_id="threat_002",
@@ -652,7 +652,7 @@ def test_human_review_node():
             threat_source_id="hostile_vehicle_002",
             reasoning="Hostile ground vehicle approaching patrol",
             confidence=0.85,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         ),
         ThreatAssessment(
             assessment_id="threat_003",
@@ -661,7 +661,7 @@ def test_human_review_node():
             threat_source_id="unknown_aircraft_003",
             reasoning="Unknown aircraft in restricted airspace",
             confidence=0.65,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         ),
         ThreatAssessment(
             assessment_id="threat_004",
@@ -670,7 +670,7 @@ def test_human_review_node():
             threat_source_id="unknown_vehicle_004",
             reasoning="Unknown vehicle far from operations",
             confidence=0.90,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
     ]
     

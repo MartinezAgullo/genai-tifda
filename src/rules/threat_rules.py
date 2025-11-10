@@ -7,7 +7,7 @@ These rules handle obvious cases without LLM calls.
 """
 
 from typing import Optional, Literal, Dict, Any
-from datetime import datetime, UTC
+from datetime import datetime, timezone, UTC
 from pathlib import Path
 import yaml
 
@@ -369,7 +369,7 @@ def get_entity_threat_category(entity_type: str) -> str:
 # ==================== TESTING ====================
 
 if __name__ == "__main__":
-    from datetime import datetime
+    from datetime import datetime, timezone
     from src.models import Location
     
     print("\n" + "=" * 70)

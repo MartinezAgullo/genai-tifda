@@ -504,7 +504,7 @@ def filter_recipients_by_distance(
 # ==================== TESTING ====================
 
 if __name__ == "__main__":
-    from datetime import datetime
+    from datetime import datetime, timezone
     from src.models import Location
     
     print("\n" + "=" * 70)

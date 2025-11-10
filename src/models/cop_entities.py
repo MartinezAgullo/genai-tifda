@@ -7,7 +7,7 @@ These models represent entities (assets, dangers, infrastructure)
 tracked in the tactical environment.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Literal
 from pydantic import BaseModel, Field, field_validator
 from typing import Any

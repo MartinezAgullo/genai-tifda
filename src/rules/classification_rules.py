@@ -297,7 +297,7 @@ def get_classification_summary(entities: List[EntityCOP]) -> Dict[str, int]:
 # ==================== TESTING ====================
 
 if __name__ == "__main__":
-    from datetime import datetime
+    from datetime import datetime, timezone
     from src.models import Location
     
     print("\n" + "=" * 70)
@@ -329,7 +329,7 @@ if __name__ == "__main__":
         entity_id="radar_001_T001",
         entity_type="aircraft",
         location=Location(lat=39.123456, lon=0.456789, alt=5000),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         classification="hostile",
         information_classification="TOP_SECRET",
         confidence=0.95,
@@ -385,7 +385,7 @@ if __name__ == "__main__":
             entity_id="friendly_001",
             entity_type="tank",
             location=Location(lat=39.4, lon=0.3),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="friendly",
             information_classification="CONFIDENTIAL",
             confidence=1.0,

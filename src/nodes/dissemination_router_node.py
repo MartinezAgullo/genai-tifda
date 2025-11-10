@@ -27,7 +27,7 @@ Node Signature:
 
 import logging
 from typing import Dict, Any, List, Set, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langsmith import traceable
 
@@ -402,12 +402,12 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
                 # Create outgoing message
                 # Create outgoing message with correct schema
                 message = OutgoingMessage(
-                    message_id=f"msg_{threat.assessment_id}_{recipient_id}_{int(datetime.utcnow().timestamp())}",
+                    message_id=f"msg_{threat.assessment_id}_{recipient_id}_{int(datetime.now(timezone.utc).timestamp())}",
                     decision_id=decision_id,
                     recipient_id=recipient_id,
                     format_type="json",  # Default to json, will be adapted in format_adapter_node
                     content=content,
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 outgoing_messages.append(message)
@@ -432,7 +432,7 @@ def dissemination_router_node(state: TIFDAState) -> Dict[str, Any]:
             "threat_level": threat.threat_level,
             "recipients": threat_recipients,
             "recipient_count": len(threat_recipients),
-            "timestamp": datetime.utcnow()
+            "timestamp": datetime.now(timezone.utc)
         })
         
         logger.info(f"   📤 Disseminated to {len(threat_recipients)} recipient(s)")
@@ -602,7 +602,7 @@ def test_dissemination_router_node():
             entity_id="hostile_aircraft_001",
             entity_type="aircraft",
             location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="hostile",
             information_classification="SECRET",
             confidence=0.9,
@@ -619,7 +619,7 @@ def test_dissemination_router_node():
             threat_source_id="hostile_aircraft_001",
             reasoning="Hostile aircraft on intercept course",
             confidence=0.95,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         ),
         ThreatAssessment(
             assessment_id="threat_002",
@@ -628,7 +628,7 @@ def test_dissemination_router_node():
             threat_source_id="hostile_aircraft_001",
             reasoning="Medium priority threat",
             confidence=0.75,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
     ]
     

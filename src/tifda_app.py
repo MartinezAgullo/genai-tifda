@@ -7,7 +7,7 @@ Complete pipeline from sensor input to dissemination.
 from dotenv import load_dotenv
 load_dotenv()               
 
-from datetime import datetime
+from datetime import datetime, timezone
 from langgraph.graph import StateGraph, END
 from src.core.state import TIFDAState, create_state_from_sensor_event
 from src.models.sensor_formats import SensorMessage
@@ -106,7 +106,7 @@ def run_pipeline(sensor_input: dict) -> dict:
         sensor_message = SensorMessage(
             sensor_id=sensor_input.get("sensor_id", "unknown"),
             sensor_type=sensor_input.get("sensor_type", "unknown"),
-            timestamp=sensor_input.get("timestamp", datetime.utcnow().isoformat()),
+            timestamp=sensor_input.get("timestamp", datetime.now(timezone.utc).isoformat()),
             data=sensor_input.get("data", ""),
             metadata=sensor_input.get("metadata", {})
         )

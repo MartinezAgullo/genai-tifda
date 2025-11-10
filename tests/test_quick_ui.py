@@ -15,7 +15,7 @@ Usage:
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from src.core.init_config import initialize_config
 from src.tifda_app import run_pipeline
 from typing import Dict, Any
@@ -77,7 +77,7 @@ def quick_ui_test():
         "sensor_id": "radar_valencia_01",
         "sensor_type": "radar",
         "data": sensor_data, # Pass the structured dictionary
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "metadata": {
             "priority": "critical",
             "test": True,

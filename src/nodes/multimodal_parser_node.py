@@ -21,7 +21,7 @@ Node Signature:
 import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langsmith import traceable
 
@@ -122,7 +122,7 @@ def multimodal_parser_node(state: TIFDAState) -> Dict[str, Any]:
                     "success": True,
                     "file_path": audio_path,
                     "report": audio_report,
-                    "processed_at": datetime.utcnow().isoformat()
+                    "processed_at": datetime.now(timezone.utc).isoformat()
                 }
                 
                 logger.info(f"✅ Audio processed successfully")
@@ -165,7 +165,7 @@ def multimodal_parser_node(state: TIFDAState) -> Dict[str, Any]:
                     "file_path": image_path,
                     "report": image_report,
                     "analysis_type": "general",
-                    "processed_at": datetime.utcnow().isoformat()
+                    "processed_at": datetime.now(timezone.utc).isoformat()
                 }
                 
                 logger.info(f"✅ Image processed successfully")
@@ -206,7 +206,7 @@ def multimodal_parser_node(state: TIFDAState) -> Dict[str, Any]:
                     "success": True,
                     "file_path": document_path,
                     "report": document_report,
-                    "processed_at": datetime.utcnow().isoformat()
+                    "processed_at": datetime.now(timezone.utc).isoformat()
                 }
                 
                 logger.info(f"✅ Document processed successfully")
@@ -331,7 +331,7 @@ def multimodal_parser_node(state: TIFDAState) -> Dict[str, Any]:
     
     # Update sensor metadata with multimodal results
     sensor_metadata["multimodal_results"] = multimodal_results
-    sensor_metadata["multimodal_processed_at"] = datetime.utcnow().isoformat()
+    sensor_metadata["multimodal_processed_at"] = datetime.now(timezone.utc).isoformat()
     sensor_metadata["multimodal_success_count"] = successful_count
     sensor_metadata["multimodal_error_count"] = failed_count
     
@@ -403,7 +403,7 @@ def test_multimodal_parser_node():
             entity_id="radio_bravo_event_001",
             entity_type="event",
             location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="unknown",
             information_classification="SECRET",
             confidence=0.8,
@@ -436,7 +436,7 @@ def test_multimodal_parser_node():
             entity_id="drone_alpha_001",
             entity_type="uav",
             location=Location(lat=39.4762, lon=-0.3747, alt=120),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             classification="friendly",
             information_classification="UNCLASSIFIED",
             confidence=1.0,

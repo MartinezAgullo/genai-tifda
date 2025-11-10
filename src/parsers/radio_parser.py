@@ -6,7 +6,7 @@ Parser for radio intercept and communications intelligence.
 """
 
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models import EntityCOP, Location, SensorMessage
 from src.parsers.base_parser import BaseParser

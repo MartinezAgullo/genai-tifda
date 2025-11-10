@@ -7,7 +7,7 @@ HTTP client for interacting with mapa-puntos-interes API.
 
 import requests
 from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 from langsmith import traceable

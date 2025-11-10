@@ -7,7 +7,7 @@ Make sure the Gradio UI is running before executing this test.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from src.tifda_app import run_pipeline
 from src.core.config import get_config
 
@@ -82,7 +82,7 @@ def test_human_review_integration():
             "sensor_id": test_case["sensor_id"],
             "sensor_type": test_case["sensor_type"],
             "data": test_case["data"],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "metadata": test_case["metadata"]
         }
         

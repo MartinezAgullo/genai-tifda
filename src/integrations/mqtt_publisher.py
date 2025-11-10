@@ -8,7 +8,7 @@ Integrates with transmission_node.py for actual message delivery.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
@@ -107,7 +107,7 @@ class MQTTPublisher:
                 success=False,
                 message_id=message.message_id,
                 topic=topic,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 error=error_msg
             )
         
@@ -120,7 +120,7 @@ class MQTTPublisher:
                 retain=False
             )
             
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             
             if success:
                 # Update stats
@@ -158,7 +158,7 @@ class MQTTPublisher:
                 success=False,
                 message_id=message.message_id,
                 topic=topic,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 error=error_msg
             )
     
@@ -309,7 +309,7 @@ Integrates with transmission_node.py for actual message delivery.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
@@ -408,7 +408,7 @@ class MQTTPublisher:
                 success=False,
                 message_id=message.message_id,
                 topic=topic,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 error=error_msg
             )
         
@@ -421,7 +421,7 @@ class MQTTPublisher:
                 retain=False
             )
             
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
             
             if success:
                 # Update stats
@@ -459,7 +459,7 @@ class MQTTPublisher:
                 success=False,
                 message_id=message.message_id,
                 topic=topic,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 error=error_msg
             )
     

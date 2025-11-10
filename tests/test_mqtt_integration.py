@@ -18,7 +18,7 @@ Requirements:
 import sys
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from time import sleep
 
 # Setup logging
@@ -64,7 +64,7 @@ def test_mqtt_client():
         # Test publish
         print("\n📤 Publishing test message...")
         test_topic = "tifda/test"
-        test_payload = '{"message": "Hello from TIFDA!", "timestamp": "' + datetime.utcnow().isoformat() + '"}'
+        test_payload = '{"message": "Hello from TIFDA!", "timestamp": "' + datetime.now(timezone.utc).isoformat() + '"}'
         
         success = client.publish(test_topic, test_payload, qos=0)
         
@@ -117,13 +117,13 @@ def test_mqtt_publisher():
             content={
                 "test": True,
                 "message": "Test message from MQTTPublisher",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "data": {
                     "threat_level": "low",
                     "confidence": 0.95
                 }
             },
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         print(f"\n📤 Publishing message '{test_message.message_id}'...")
@@ -186,7 +186,7 @@ def test_transmission_node():
                     "threat_level": "medium",
                     "test": True
                 },
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             ),
             OutgoingMessage(
                 message_id="integration_test_002",
@@ -198,7 +198,7 @@ def test_transmission_node():
                     "entity_count": 1,
                     "test": True
                 },
-                timestamp=datetime.utcnow()
+                timestamp=datetime.now(timezone.utc)
             )
         ]
         
