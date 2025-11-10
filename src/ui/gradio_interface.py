@@ -169,14 +169,14 @@ def format_threat_list() -> str:
             <div style='display: flex; justify-content: space-between; align-items: center;'>
                 <div>
                     <span style='font-size: 20px;'>{emoji}</span>
-                    <strong style='font-size: 16px; margin-left: 10px;'>{threat_level.upper()}</strong>
+                    <strong style='font-size: 16px; margin-left: 10px; color: #1a1a1a;'>{threat_level.upper()}</strong>
                 </div>
                 <div style='color: #666; font-size: 14px;'>
                     Confidence: {confidence:.0f}%
                 </div>
             </div>
-            <div style='margin-top: 10px; color: #333;'>
-                Source: <code>{source_id}</code>
+            <div style='margin-top: 10px; color: #1a1a1a; font-size: 14px;'>
+                <strong>Source:</strong> <span style='font-family: monospace; color: #1a1a1a; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;'>{source_id}</span>
             </div>
             <div style='margin-top: 5px; font-size: 12px; color: #666;'>
                 ID: {threat_id}
