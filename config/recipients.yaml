@@ -1,0 +1,330 @@
+# TIFDA Recipients Configuration
+# ================================
+# 
+# This file defines all downstream recipients (units, allies, systems)
+# that can receive intelligence from TIFDA.
+#
+# Each recipient has:
+# - Access level (clearance)
+# - Position (if static) or query from mapa-puntos-interes
+# - Operational role (for need-to-know decisions)
+# - MQTT topics per classification level
+# - Supported formats
+
+recipients:
+  # ============ FRIENDLY UNITS (OUR FORCES) ============
+
+  - recipient_id: "base_alpha"
+    recipient_name: "Base Alpha - Air Defense"
+    recipient_type: "friendly_unit"
+    access_level: "secret_access"  # Can receive up to SECRET
+    
+    # Position (static base)
+    location:
+      lat: 39.491959625 
+      lon: -0.482045563
+      alt: 50
+    is_mobile: false
+    
+    # Operational role (for need-to-know)
+    operational_role: "air_defense"
+    priority_entity_types:
+      - "aircraft"
+      - "missile"
+      - "uav"
+    
+    # MQTT topics per classification level
+    mqtt_topics:
+      TOP_SECRET: null  # Cannot receive TOP_SECRET
+      SECRET: "tifda/units/base_alpha/secret"
+      CONFIDENTIAL: "tifda/units/base_alpha/confidential"
+      RESTRICTED: "tifda/units/base_alpha/restricted"
+      UNCLASSIFIED: "tifda/units/base_alpha/unclassified"
+    
+    # Output formats
+    supported_formats:
+      - "json"
+      - "link16"
+    
+    # Dissemination settings
+    auto_disseminate: true  # Critical threats auto-send
+    requires_human_approval: false
+    
+  - recipient_id: "command_post_001"
+    recipient_name: "Command Post 001"
+    recipient_type: "friendly_unit"
+    access_level: "top_secret_access"
+    
+    location:
+      lat: 39.5174673838
+      lon: -0.4165438418
+      alt: 100
+    is_mobile: false
+    
+    operational_role: "command_control"
+    priority_entity_types: ["all"]  # Receives all types
+    
+    mqtt_topics:
+      TOP_SECRET: "tifda/command/cp001/top_secret"
+      SECRET: "tifda/command/cp001/secret"
+      CONFIDENTIAL: "tifda/command/cp001/confidential"
+      RESTRICTED: "tifda/command/cp001/restricted"
+      UNCLASSIFIED: "tifda/command/cp001/unclassified"
+    
+    supported_formats:
+      - "json"
+      - "link16"
+      - "cot"
+    
+    auto_disseminate: true
+    requires_human_approval: false
+    
+  - recipient_id: "mobile_unit_bravo"
+    recipient_name: "Mobile Unit Bravo - Ground Forces"
+    recipient_type: "friendly_unit"
+    access_level: "confidential_access"
+    
+    # Mobile unit - query position from mapa-puntos-interes
+    location: null
+    is_mobile: true
+    elemento_identificado: "mobile_unit_bravo"  # ID in mapa database
+    
+    operational_role: "ground_operations"
+    priority_entity_types:
+      - "ground_vehicle"
+      - "tank"
+      - "infantry"
+      - "artillery"
+    
+    mqtt_topics:
+      TOP_SECRET: null
+      SECRET: null
+      CONFIDENTIAL: "tifda/units/bravo/confidential"
+      RESTRICTED: "tifda/units/bravo/restricted"
+      UNCLASSIFIED: "tifda/units/bravo/unclassified"
+    
+    supported_formats:
+      - "json"
+      - "voice_text"
+    
+    auto_disseminate: true
+    requires_human_approval: false
+
+  - recipient_id: "mobile_unit_charlie"
+    recipient_name: "Mobile Unit Charlie - Ground Forces"
+    recipient_type: "friendly_unit"
+    access_level: "confidential_access"
+    
+    # Mobile unit - query position from mapa-puntos-interes
+    location:
+      lat: 38.2246080035
+      lon: -0.6927605721
+      alt: 0
+    is_mobile: true
+    elemento_identificado: "mobile_unit_charlie"  # ID in mapa database
+    
+    operational_role: "ground_operations"
+    priority_entity_types:
+      - "ground_vehicle"
+      - "tank"
+      - "infantry"
+      - "artillery"
+    
+    mqtt_topics:
+      TOP_SECRET: null
+      SECRET: null
+      CONFIDENTIAL: "tifda/units/charlie/confidential"
+      RESTRICTED: "tifda/units/charlie/restricted"
+      UNCLASSIFIED: "tifda/units/charlie/unclassified"
+    
+    supported_formats:
+      - "json"
+      - "voice_text"
+    
+    auto_disseminate: true
+    requires_human_approval: false
+    
+  - recipient_id: "naval_task_force"
+    recipient_name: "Naval Task Force Charlie"
+    recipient_type: "friendly_unit"
+    access_level: "secret_access"
+    
+    location:
+      lat: 39.4784525
+      lon: -0.2598943
+      alt: 0
+    is_mobile: true
+    elemento_identificado: "naval_tf_charlie"
+    
+    operational_role: "naval_operations"
+    priority_entity_types:
+      - "ship"
+      - "submarine"
+      - "aircraft"  # Naval aviation
+    
+    mqtt_topics:
+      TOP_SECRET: null
+      SECRET: "tifda/naval/charlie/secret"
+      CONFIDENTIAL: "tifda/naval/charlie/confidential"
+      RESTRICTED: "tifda/naval/charlie/restricted"
+      UNCLASSIFIED: "tifda/naval/charlie/unclassified"
+    
+    supported_formats:
+      - "json"
+      - "link16"
+    
+    auto_disseminate: true
+    requires_human_approval: false
+  
+  # ============ ALLIED FORCES ============
+  
+  - recipient_id: "allied_bms_uk"
+    recipient_name: "UK Allied Battle Management System"
+    recipient_type: "allied_cms"
+    access_level: "secret_access"  # Coalition SECRET
+    
+    location: null  # Unknown/remote
+    is_mobile: false
+    
+    operational_role: "command_control"
+    priority_entity_types: ["all"]
+    
+    mqtt_topics:
+      TOP_SECRET: null  # Cannot share TOP_SECRET with allies
+      SECRET: "tifda/allies/uk/secret"
+      CONFIDENTIAL: "tifda/allies/uk/confidential"
+      RESTRICTED: "tifda/allies/uk/restricted"
+      UNCLASSIFIED: "tifda/allies/uk/unclassified"
+    
+    supported_formats:
+      - "link16"
+      - "json"
+    
+    auto_disseminate: false  # Allied dissemination requires review
+    requires_human_approval: true
+    
+    # Coalition information sharing agreement
+    coalition_agreement: "NATO_STANAG"
+    sharing_restrictions:
+      - "no_top_secret"
+      - "downgrade_sources"  # Remove sensitive source info
+    
+  - recipient_id: "allied_air_defense_fr"
+    recipient_name: "French Air Defense Liaison"
+    recipient_type: "allied_unit"
+    access_level: "confidential_access"
+    
+    location: null
+    is_mobile: false
+    
+    operational_role: "air_defense"
+    priority_entity_types:
+      - "aircraft"
+      - "missile"
+    
+    mqtt_topics:
+      TOP_SECRET: null
+      SECRET: null
+      CONFIDENTIAL: "tifda/allies/france/confidential"
+      RESTRICTED: "tifda/allies/france/restricted"
+      UNCLASSIFIED: "tifda/allies/france/unclassified"
+    
+    supported_formats:
+      - "link16"
+      - "json"
+    
+    auto_disseminate: false
+    requires_human_approval: true
+    
+    coalition_agreement: "NATO_STANAG"
+    sharing_restrictions:
+      - "no_secret_or_above"
+      - "aircraft_threats_only"
+  
+  # ============ HEADQUARTERS / STRATEGIC ============
+  
+  - recipient_id: "strategic_hq"
+    recipient_name: "Strategic Headquarters"
+    recipient_type: "headquarters"
+    access_level: "top_secret_access"
+    
+    location: null  # Remote/classified
+    is_mobile: false
+    
+    operational_role: "strategic_command"
+    priority_entity_types: ["all"]
+    
+    # Receives ALL threat levels
+    receive_threat_levels:
+      - "critical"
+      - "high"
+      - "medium"
+      - "low"
+    
+    mqtt_topics:
+      TOP_SECRET: "tifda/hq/strategic/top_secret"
+      SECRET: "tifda/hq/strategic/secret"
+      CONFIDENTIAL: "tifda/hq/strategic/confidential"
+      RESTRICTED: "tifda/hq/strategic/restricted"
+      UNCLASSIFIED: "tifda/hq/strategic/unclassified"
+    
+    supported_formats:
+      - "json"
+      - "cot"
+    
+    auto_disseminate: true
+    requires_human_approval: false
+  
+  # ============ TESTING / DEVELOPMENT ============
+  
+  - recipient_id: "test_recipient"
+    recipient_name: "Test Recipient (Development)"
+    recipient_type: "test"
+    access_level: "unclassified_access"
+    
+    location:
+      lat: 39.48350249079
+      lon: -0.35828466862
+      alt: 10
+    is_mobile: false
+    
+    operational_role: "testing"
+    priority_entity_types: ["all"]
+    
+    mqtt_topics:
+      TOP_SECRET: null
+      SECRET: null
+      CONFIDENTIAL: null
+      RESTRICTED: null
+      UNCLASSIFIED: "tifda/test/output"
+    
+    supported_formats:
+      - "json"
+    
+    auto_disseminate: true
+    requires_human_approval: false
+
+
+# ============ RECIPIENT ROLES DOCUMENTATION ============
+# 
+# operational_role values and their meaning:
+# - "air_defense": Air defense units (receive aircraft/missile threats)
+# - "ground_operations": Ground forces (receive ground vehicle/infantry threats)
+# - "naval_operations": Naval units (receive ship/submarine threats)
+# - "command_control": Command posts (receive all threats)
+# - "strategic_command": Strategic HQ (receive all threats, all levels)
+# - "testing": Development/testing only
+#
+# access_level values (hierarchy):
+# - "top_secret_access": Can receive TOP_SECRET and below
+# - "secret_access": Can receive SECRET and below
+# - "confidential_access": Can receive CONFIDENTIAL and below
+# - "restricted_access": Can receive RESTRICTED and below
+# - "unclassified_access": UNCLASSIFIED only
+#
+# recipient_type values:
+# - "friendly_unit": Our own forces
+# - "allied_cms": Allied command/management system
+# - "allied_unit": Allied tactical unit
+# - "headquarters": Strategic command
+# - "test": Testing/development

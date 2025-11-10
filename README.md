@@ -122,7 +122,6 @@ tifda/
 │   └── threat_assessments      # Generated analysis
 ├── pyproject.toml
 ├── src
-│   ├── agents
 │   ├── core
 │   │   ├── config.py           # Configuration schema
 │   │   ├── constants.py

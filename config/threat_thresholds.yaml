@@ -1,0 +1,353 @@
+
+# TIFDA Threat Distance Thresholds
+# ==================================
+#
+# Distance thresholds (in kilometers) for need-to-know dissemination decisions.
+#
+# For each entity type and classification, we define:
+# - must_notify_km: If distance < this, ALWAYS notify (mandatory)
+# - never_notify_km: If distance > this, NEVER notify (too far away)
+# - Between these values: Use LLM reasoning to decide
+#
+# Logic:
+# - distance < must_notify_km → MUST NOTIFY (rule-based, fast)
+# - distance > never_notify_km → DON'T NOTIFY (rule-based, fast)
+# - must_notify_km ≤ distance ≤ never_notify_km → LLM decides (ambiguous)
+
+thresholds:
+  # ============ AIRCRAFT ============
+  aircraft:
+    friendly:
+      must_notify_km: 150
+      never_notify_km: 400
+      reasoning: "Friendly aircraft - notify if relatively close for coordination"
+    
+    hostile:
+      must_notify_km: 300
+      never_notify_km: 600
+      reasoning: "Hostile aircraft - wider notification range due to high threat"
+    
+    unknown:
+      must_notify_km: 150
+      never_notify_km: 300
+      reasoning: "Unknown aircraft - moderate notification range pending identification"
+    
+    neutral:
+      must_notify_km: 50
+      never_notify_km: 300
+      reasoning: "Neutral aircraft - smaller notification range unless very close"
+  
+  # ============ FIGHTERS (Specialized aircraft) ============
+  fighter:
+    friendly:
+      must_notify_km: 150
+      never_notify_km: 400
+      reasoning: "Friendly fighters - same as aircraft"
+    
+    hostile:
+      must_notify_km: 300
+      never_notify_km: 600
+      reasoning: "Hostile fighters - high threat, wide notification"
+    
+    unknown:
+      must_notify_km: 150
+      never_notify_km: 300
+      reasoning: "Unknown fighters - moderate range"
+    
+    neutral:
+      must_notify_km: 50
+      never_notify_km: 300
+      reasoning: "Neutral fighters - smaller range"
+  
+  # ============ UAV / DRONES ============
+  uav:
+    friendly:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Friendly UAV - moderate range for coordination"
+    
+    hostile:
+      must_notify_km: 200
+      never_notify_km: 500
+      reasoning: "Hostile UAV - ISR or strike threat"
+    
+    unknown:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Unknown UAV - moderate range"
+    
+    neutral:
+      must_notify_km: 50
+      never_notify_km: 200
+      reasoning: "Neutral UAV - smaller range"
+  
+  # ============ MISSILES ============
+  missile:
+    friendly:
+      must_notify_km: 300
+      never_notify_km: 600
+      reasoning: "Friendly missiles - wide range for deconfliction"
+    
+    hostile:
+      must_notify_km: 300
+      never_notify_km: 600
+      reasoning: "Hostile missiles - CRITICAL threat, wide notification"
+    
+    unknown:
+      must_notify_km: 250
+      never_notify_km: 500
+      reasoning: "Unknown missiles - treat as high threat"
+    
+    neutral:
+      must_notify_km: 200
+      never_notify_km: 400
+      reasoning: "Neutral missiles - still significant threat range"
+  
+  # ============ GROUND VEHICLES ============
+  ground_vehicle:
+    friendly:
+      must_notify_km: 50
+      never_notify_km: 200
+      reasoning: "Friendly ground vehicles - moderate local range"
+    
+    hostile:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Hostile ground vehicles - wider threat range"
+    
+    unknown:
+      must_notify_km: 75
+      never_notify_km: 250
+      reasoning: "Unknown ground vehicles - moderate range"
+    
+    neutral:
+      must_notify_km: 25
+      never_notify_km: 100
+      reasoning: "Neutral ground vehicles - small range unless very close"
+  
+  # ============ TANKS ============
+  tank:
+    friendly:
+      must_notify_km: 50
+      never_notify_km: 200
+      reasoning: "Friendly tanks - local coordination"
+    
+    hostile:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Hostile tanks - significant ground threat"
+    
+    unknown:
+      must_notify_km: 75
+      never_notify_km: 250
+      reasoning: "Unknown tanks - treat as potential threat"
+    
+    neutral:
+      must_notify_km: 25
+      never_notify_km: 100
+      reasoning: "Neutral tanks - small range"
+  
+  # ============ ARTILLERY ============
+  artillery:
+    friendly:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Friendly artillery - coordinate fire missions"
+    
+    hostile:
+      must_notify_km: 150
+      never_notify_km: 400
+      reasoning: "Hostile artillery - long-range threat (20-40km range)"
+    
+    unknown:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Unknown artillery - significant threat"
+    
+    neutral:
+      must_notify_km: 50
+      never_notify_km: 200
+      reasoning: "Neutral artillery - moderate range"
+  
+  # ============ INFANTRY ============
+  infantry:
+    friendly:
+      must_notify_km: 25
+      never_notify_km: 100
+      reasoning: "Friendly infantry - very local coordination"
+    
+    hostile:
+      must_notify_km: 50
+      never_notify_km: 150
+      reasoning: "Hostile infantry - local threat"
+    
+    unknown:
+      must_notify_km: 50
+      never_notify_km: 150
+      reasoning: "Unknown infantry - local threat"
+    
+    neutral:
+      must_notify_km: 10
+      never_notify_km: 50
+      reasoning: "Neutral infantry - very small range"
+  
+  # ============ SHIPS ============
+  ship:
+    friendly:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Friendly ships - naval coordination"
+    
+    hostile:
+      must_notify_km: 150
+      never_notify_km: 400
+      reasoning: "Hostile ships - naval threat with long-range weapons"
+    
+    unknown:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Unknown ships - moderate range"
+    
+    neutral:
+      must_notify_km: 50
+      never_notify_km: 200
+      reasoning: "Neutral ships - smaller range"
+  
+  # ============ SUBMARINES ============
+  submarine:
+    friendly:
+      must_notify_km: 150
+      never_notify_km: 400
+      reasoning: "Friendly submarines - wide range for deconfliction"
+    
+    hostile:
+      must_notify_km: 200
+      never_notify_km: 500
+      reasoning: "Hostile submarines - high stealth threat"
+    
+    unknown:
+      must_notify_km: 150
+      never_notify_km: 400
+      reasoning: "Unknown submarines - significant threat"
+    
+    neutral:
+      must_notify_km: 75
+      never_notify_km: 250
+      reasoning: "Neutral submarines - moderate range"
+  
+  # ============ INFRASTRUCTURE / STATIC ============
+  base:
+    friendly:
+      must_notify_km: 50
+      never_notify_km: 200
+      reasoning: "Friendly base - local area awareness"
+    
+    hostile:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Hostile base - strategic target"
+    
+    unknown:
+      must_notify_km: 75
+      never_notify_km: 250
+      reasoning: "Unknown base - investigate"
+    
+    neutral:
+      must_notify_km: 25
+      never_notify_km: 100
+      reasoning: "Neutral base - small range"
+  
+  # ============ DEFAULT (catch-all) ============
+  default:
+    friendly:
+      must_notify_km: 75
+      never_notify_km: 250
+      reasoning: "Default friendly entity - moderate range"
+    
+    hostile:
+      must_notify_km: 100
+      never_notify_km: 300
+      reasoning: "Default hostile entity - wider threat range"
+    
+    unknown:
+      must_notify_km: 75
+      never_notify_km: 250
+      reasoning: "Default unknown entity - moderate range"
+    
+    neutral:
+      must_notify_km: 25
+      never_notify_km: 100
+      reasoning: "Default neutral entity - small range"
+
+
+# ============ OPERATIONAL ROLE MODIFIERS ============
+# These modifiers adjust thresholds based on recipient's operational role
+role_modifiers:
+  air_defense:
+    # Air defense units get wider range for aircraft/missiles
+    entity_types:
+      - "aircraft"
+      - "fighter"
+      - "bomber"
+      - "helicopter"
+      - "uav"
+      - "missile"
+    multiplier: 1.5  # Extend range by 50%
+    reasoning: "Air defense requires early warning for airborne threats"
+  
+  naval_operations:
+    # Naval units get wider range for ships/submarines
+    entity_types:
+      - "ship"
+      - "submarine"
+      - "carrier"
+      - "destroyer"
+    multiplier: 1.3
+    reasoning: "Naval warfare requires extended maritime awareness"
+  
+  ground_operations:
+    # Ground forces focus on local threats
+    entity_types:
+      - "ground_vehicle"
+      - "tank"
+      - "infantry"
+      - "artillery"
+    multiplier: 1.0  # No change
+    reasoning: "Ground operations are typically local"
+  
+  command_control:
+    # Command posts receive everything
+    entity_types: ["all"]
+    multiplier: 2.0  # Double range
+    reasoning: "Command requires comprehensive situational awareness"
+  
+  strategic_command:
+    # Strategic HQ receives all, regardless of distance
+    entity_types: ["all"]
+    multiplier: 999.0  # Effectively infinite range
+    reasoning: "Strategic command needs complete operational picture"
+
+
+# ============ CONFIGURATION NOTES ============
+#
+# How to use these thresholds:
+#
+# 1. Calculate distance between threat and recipient
+# 2. Get threshold for (entity_type, classification)
+# 3. Apply operational role modifier if applicable
+# 4. Decision logic:
+#    - distance < must_notify_km → NOTIFY (mandatory)
+#    - distance > never_notify_km → DON'T NOTIFY (too far)
+#    - In between → Use LLM reasoning
+#
+# Example:
+#   - Hostile aircraft at 250km from air defense unit
+#   - Base threshold: must_notify=300km, never_notify=600km
+#   - Role modifier: air_defense × 1.5
+#   - Adjusted: must_notify=450km, never_notify=900km
+#   - Result: 250km < 450km → NOTIFY (mandatory)
+#
+# Emergency Override:
+#   - When emergency_override=True, ALL recipients receive ALL threats
+#   - Ignores distance thresholds and classification levels
+#   - Use only in critical situations
