@@ -11,11 +11,19 @@ import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Literal, Any
 from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 from src.models import EntityCOP, ThreatAssessment
 
 
 # ==================== DATA STRUCTURES ====================
+
+class LocationInfo(BaseModel):
+    """Location with enforced structure"""
+    lat: float = Field(..., ge=-90, le=90, description="Latitude in decimal degrees")
+    lon: float = Field(..., ge=-180, le=180, description="Longitude in decimal degrees")
+    alt: Optional[float] = Field(None, description="Altitude in meters (optional)")
+
 
 @dataclass
 class RecipientInfo:
@@ -24,7 +32,7 @@ class RecipientInfo:
     recipient_name: str
     recipient_type: str
     access_level: str
-    location: Optional[Dict[str, float]]  # {lat, lon, alt}
+    location: Optional[LocationInfo]  # Properly typed with Pydantic model
     is_mobile: bool
     elemento_identificado: Optional[str]
     operational_role: str
@@ -101,12 +109,22 @@ def load_recipients_config(config_path: Optional[Path] = None) -> List[Recipient
     
     recipients = []
     for recipient_data in config['recipients']:
+        # Parse location if present
+        location = None
+        if recipient_data.get('location'):
+            loc_data = recipient_data['location']
+            location = LocationInfo(
+                lat=loc_data['lat'],
+                lon=loc_data['lon'],
+                alt=loc_data.get('alt')
+            )
+        
         recipient = RecipientInfo(
             recipient_id=recipient_data['recipient_id'],
             recipient_name=recipient_data['recipient_name'],
             recipient_type=recipient_data['recipient_type'],
             access_level=recipient_data['access_level'],
-            location=recipient_data.get('location'),
+            location=location,  # Now properly typed LocationInfo
             is_mobile=recipient_data['is_mobile'],
             elemento_identificado=recipient_data.get('elemento_identificado'),
             operational_role=recipient_data['operational_role'],
@@ -538,7 +556,7 @@ if __name__ == "__main__":
         entity_id="hostile_001",
         entity_type="aircraft",
         location=Location(lat=39.5, lon=0.4),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         classification="hostile",
         information_classification="SECRET",
         confidence=0.9,

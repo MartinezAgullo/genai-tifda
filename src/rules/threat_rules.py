@@ -7,6 +7,10 @@ These rules handle obvious cases without LLM calls.
 """
 
 from typing import Optional, Literal, Dict, Any
+from datetime import datetime, UTC
+from pathlib import Path
+import yaml
+
 from src.models import EntityCOP
 
 
@@ -19,36 +23,97 @@ NON_THREAT_CLASSIFICATIONS = ["friendly", "neutral"]
 """Classifications that generally don't pose threats"""
 
 
-# ==================== ENTITY THREAT LEVELS ====================
+# ==================== LOAD THREAT MULTIPLIERS FROM CONFIG ====================
 
-ENTITY_TYPE_THREAT_MULTIPLIERS = {
-    # High threat types (fast-moving, long-range)
-    "missile": 3.0,
-    "fighter": 2.5,
-    "bomber": 2.5,
-    "aircraft": 2.0,
-    "helicopter": 1.8,
-    "uav": 1.5,
+_threat_multipliers_cache: Optional[Dict[str, float]] = None
+
+
+def _load_threat_multipliers() -> Dict[str, float]:
+    """
+    Load threat multipliers from threat_thresholds.yaml.
     
-    # Medium threat types
-    "tank": 1.5,
-    "artillery": 1.5,
-    "ship": 1.3,
-    "destroyer": 1.4,
-    "submarine": 1.6,
+    Returns:
+        Dictionary mapping entity_type -> threat_multiplier
+    """
+    global _threat_multipliers_cache
     
-    # Lower threat types
-    "ground_vehicle": 1.0,
-    "apc": 1.0,
-    "infantry": 0.8,
-    "person": 0.5,
+    if _threat_multipliers_cache is not None:
+        return _threat_multipliers_cache
     
-    # Infrastructure (typically not immediate threat)
-    "base": 0.3,
-    "building": 0.2,
-    "infrastructure": 0.2,
-}
-"""Multipliers based on entity type (higher = more threatening)"""
+    # Try multiple possible locations
+    possible_paths = [
+        Path("config/threat_thresholds.yaml"),
+        Path("src/config/threat_thresholds.yaml"),
+        Path(__file__).parent.parent / "config" / "threat_thresholds.yaml",
+    ]
+    
+    config_path = None
+    for path in possible_paths:
+        if path.exists():
+            config_path = path
+            break
+    
+    if config_path is None:
+        # Fall back to default multipliers if config not found
+        print("⚠️  threat_thresholds.yaml not found, using default multipliers")
+        _threat_multipliers_cache = {
+            "missile": 3.0,
+            "fighter": 2.5,
+            "bomber": 2.5,
+            "aircraft": 2.0,
+            "helicopter": 1.8,
+            "uav": 1.5,
+            "tank": 1.5,
+            "artillery": 1.5,
+            "ship": 1.3,
+            "destroyer": 1.4,
+            "submarine": 1.6,
+            "ground_vehicle": 1.0,
+            "apc": 1.0,
+            "infantry": 0.8,
+            "person": 0.5,
+            "base": 0.3,
+            "building": 0.2,
+            "infrastructure": 0.2,
+            "default": 1.0
+        }
+        return _threat_multipliers_cache
+    
+    # Load from YAML
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Extract threat_multiplier for each entity type
+    multipliers = {}
+    thresholds = config.get('thresholds', {})
+    
+    for entity_type, classifications in thresholds.items():
+        # Get multiplier from any classification (they should all be the same)
+        for classification_data in classifications.values():
+            if isinstance(classification_data, dict) and 'threat_multiplier' in classification_data:
+                multipliers[entity_type] = classification_data['threat_multiplier']
+                break
+    
+    # Add default if not present
+    if 'default' not in multipliers:
+        multipliers['default'] = 1.0
+    
+    _threat_multipliers_cache = multipliers
+    return multipliers
+
+
+def get_threat_multiplier(entity_type: str) -> float:
+    """
+    Get threat multiplier for entity type.
+    
+    Args:
+        entity_type: Type of entity
+        
+    Returns:
+        Threat multiplier (higher = more threatening)
+    """
+    multipliers = _load_threat_multipliers()
+    return multipliers.get(entity_type, multipliers.get('default', 1.0))
 
 
 # ==================== SPEED-BASED THREAT ASSESSMENT ====================
@@ -219,7 +284,7 @@ def calculate_threat_score(
     score += classification_scores.get(entity.classification, 30)
     
     # ============ ENTITY TYPE MULTIPLIER ============
-    type_multiplier = ENTITY_TYPE_THREAT_MULTIPLIERS.get(entity.entity_type, 1.0)
+    type_multiplier = get_threat_multiplier(entity.entity_type)
     score *= type_multiplier
     
     # ============ DISTANCE PENALTY ============
@@ -317,7 +382,7 @@ if __name__ == "__main__":
         entity_id="missile_001",
         entity_type="missile",
         location=Location(lat=39.5, lon=0.4),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         classification="hostile",
         information_classification="SECRET",
         confidence=0.95,
@@ -339,7 +404,7 @@ if __name__ == "__main__":
         entity_id="aircraft_002",
         entity_type="aircraft",
         location=Location(lat=39.8, lon=0.8),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         classification="unknown",
         information_classification="SECRET",
         confidence=0.75,
@@ -361,7 +426,7 @@ if __name__ == "__main__":
         entity_id="tank_003",
         entity_type="tank",
         location=Location(lat=39.4, lon=0.3),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(UTC),
         classification="friendly",
         information_classification="SECRET",
         confidence=1.0,
