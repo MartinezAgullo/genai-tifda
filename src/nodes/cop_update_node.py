@@ -162,6 +162,20 @@ def _load_recipients_into_cop(cop_entities: Dict[str, EntityCOP]) -> Dict[str, A
         
         logger.info(f"   ✅ Loaded {stats['loaded']} recipients into COP")
         logger.info(f"   ⏭️  Skipped {stats['skipped']} (no location or already present)")
+
+        # # Sync recipients to mapa so they appear on the map
+        if recipient_entities:
+            try:
+                from src.integrations.cop_sync import get_cop_sync
+                cop_sync = get_cop_sync()
+                sync_result = cop_sync.sync_batch(recipient_entities)
+                
+                if sync_result['success']:
+                    logger.info(f"   🗺️  Synced {stats['loaded']} recipients to mapa")
+                else:
+                    logger.warning(f"   ⚠️  Mapa sync had errors for recipients")
+            except Exception as e:
+                logger.warning(f"   ⚠️  Failed to sync recipients to mapa: {e}")
         
         return stats
         
@@ -218,7 +232,7 @@ def _update_cop_with_entities(
             # New entity - ADD
             stats["added"] += 1
             stats["entity_ids_added"].append(entity_id)
-            logger.info(f"   ➕ Adding: {entity_id}")
+            logger.info(f"      ➕ Adding: {entity_id}")
         
         # Add or update in COP
         cop_entities[entity_id] = entity
@@ -309,7 +323,7 @@ No sensor entities to process in this update.
             "decision_reasoning": reasoning
         }
     
-    logger.info(f"📡 Updating COP with {len(parsed_entities)} entities from sensor: {sensor_id}")
+    logger.info(f"   📡 Updating COP with {len(parsed_entities)} entities from sensor: {sensor_id}")
     
     # ============ UPDATE COP ============
     

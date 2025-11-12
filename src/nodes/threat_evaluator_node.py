@@ -5,8 +5,8 @@ Threat Evaluator Node
 Seventh node in the TIFDA pipeline - Hybrid threat assessment.
 
 ENHANCEMENTS:
-- 🎯 Rule-based assessment for obvious cases (70% of threats)
-- 🤖 LLM assessment only for ambiguous cases (30% of threats)
+- 🎯 Rule-based assessment for obvious cases
+- 🤖 LLM assessment only for ambiguous cases
 - ⚡ 5x faster threat evaluation
 - 💰 70% cost reduction on LLM API calls
 - 📊 Threat scoring for prioritization
@@ -46,7 +46,8 @@ logger = logging.getLogger(__name__)
 # Threat assessment configuration
 THREAT_ASSESSMENT_MODEL = "gpt-4o-mini"  # Fast and cost-effective
 THREAT_ASSESSMENT_TEMPERATURE = 0.1  # Low temperature for consistent assessments
-THREAT_PROXIMITY_RADIUS_KM = 50  # Consider threats within 50km of friendlies
+THREAT_PROXIMITY_RADIUS_KM = 2000  # Consider threats within THREAT_PROXIMITY_RADIUS_KM  of friendlies
+# tbh, THREAT_PROXIMITY_RADIUS_KM makes no sense because the distances are already defined in thread rules
 
 # Entities that trigger threat assessment
 THREAT_TRIGGER_CLASSIFICATIONS = ["hostile", "unknown"]
@@ -177,7 +178,7 @@ def _assess_threat_hybrid(
     )
     
     if obvious_level:
-        # ✅ Rule-based assessment succeeded (70% of cases)
+        # ✅ Rule-based assessment succeeded (in principle, most of cases)
         logger.info(f"⚡ Rule-based assessment: {entity.entity_id} → {obvious_level.upper()}")
         logger.info(f"   Classification: {entity.classification}, Type: {entity.entity_type}, Distance: {distance_to_nearest:.0f}km")
         
@@ -208,7 +209,7 @@ def _assess_threat_hybrid(
     logger.info(f"🤖 Ambiguous case - calling LLM for {entity.entity_id}")
     logger.info(f"   (Distance: {distance_to_nearest:.0f}km, Classification: {entity.classification})")
     
-    # Use LLM assessment for ambiguous cases (30% of cases)
+    # Use LLM assessment for ambiguous cases (these should be the less frequent scenarios of cases)
     return _assess_threat_with_llm(
         entity,
         nearby_friendlies,
