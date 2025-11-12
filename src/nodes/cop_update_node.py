@@ -153,8 +153,8 @@ def _load_recipients_into_cop(cop_entities: Dict[str, EntityCOP]) -> Dict[str, A
             stats["loaded"] += 1
             stats["entity_ids"].append(entity_id)
             
-            logger.info(f"   ➕ {recipient.recipient_name} ({entity_id})")
-            logger.debug(f"      Type: {entity_type}, Location: {recipient.location.lat:.4f}, {recipient.location.lon:.4f}")
+            logger.info(f"     ➕ {recipient.recipient_name} ({entity_id})")
+            logger.debug(f"        Type: {entity_type}, Location: {recipient.location.lat:.4f}, {recipient.location.lon:.4f}")
         
         # Add recipients to COP using same logic as sensor entities
         for entity in recipient_entities:

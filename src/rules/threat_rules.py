@@ -1,12 +1,18 @@
 """
 Threat Assessment Rules
-=======================
+===================================
 
 Deterministic rules for quick threat evaluation.
 These rules handle obvious cases without LLM calls.
+
+ENHANCED: Now uses complete threat_thresholds.yaml data including:
+- threat_multiplier for scoring
+- must_notify_km for critical distance decisions  
+- never_notify_km for far-away filtering
+- classification-specific thresholds
 """
 
-from typing import Optional, Literal, Dict, Any
+from typing import Optional, Literal, Dict, Any, Tuple
 from datetime import datetime, timezone, UTC
 from pathlib import Path
 import yaml
@@ -23,22 +29,33 @@ NON_THREAT_CLASSIFICATIONS = ["friendly", "neutral"]
 """Classifications that generally don't pose threats"""
 
 
-# ==================== LOAD THREAT MULTIPLIERS FROM CONFIG ====================
+# ==================== LOAD THRESHOLDS FROM CONFIG ====================
 
-_threat_multipliers_cache: Optional[Dict[str, float]] = None
+_threat_thresholds_cache: Optional[Dict] = None
 
 
-def _load_threat_multipliers() -> Dict[str, float]:
+def _load_threat_thresholds() -> Dict:
     """
-    Load threat multipliers from threat_thresholds.yaml.
+    Load complete threat thresholds from threat_thresholds.yaml.
     
     Returns:
-        Dictionary mapping entity_type -> threat_multiplier
+        Dictionary with thresholds and role modifiers:
+        {
+            'thresholds': {
+                'aircraft': {
+                    'hostile': {'must_notify_km': 300, 'never_notify_km': 600, 'threat_multiplier': 2.0, ...},
+                    'friendly': {...},
+                    ...
+                },
+                ...
+            },
+            'role_modifiers': {...}
+        }
     """
-    global _threat_multipliers_cache
+    global _threat_thresholds_cache
     
-    if _threat_multipliers_cache is not None:
-        return _threat_multipliers_cache
+    if _threat_thresholds_cache is not None:
+        return _threat_thresholds_cache
     
     # Try multiple possible locations
     possible_paths = [
@@ -54,66 +71,79 @@ def _load_threat_multipliers() -> Dict[str, float]:
             break
     
     if config_path is None:
-        # Fall back to default multipliers if config not found
-        print("⚠️  threat_thresholds.yaml not found, using default multipliers")
-        _threat_multipliers_cache = {
-            "missile": 3.0,
-            "fighter": 2.5,
-            "bomber": 2.5,
-            "aircraft": 2.0,
-            "helicopter": 1.8,
-            "uav": 1.5,
-            "tank": 1.5,
-            "artillery": 1.5,
-            "ship": 1.3,
-            "destroyer": 1.4,
-            "submarine": 1.6,
-            "ground_vehicle": 1.0,
-            "apc": 1.0,
-            "infantry": 0.8,
-            "person": 0.5,
-            "base": 0.3,
-            "building": 0.2,
-            "infrastructure": 0.2,
-            "default": 1.0
+        # Fall back to minimal default if config not found
+        print("⚠️  threat_thresholds.yaml not found, using minimal defaults")
+        _threat_thresholds_cache = {
+            'thresholds': {
+                'default': {
+                    'hostile': {'must_notify_km': 100, 'never_notify_km': 300, 'threat_multiplier': 1.0},
+                    'unknown': {'must_notify_km': 75, 'never_notify_km': 250, 'threat_multiplier': 1.0},
+                    'friendly': {'must_notify_km': 75, 'never_notify_km': 250, 'threat_multiplier': 1.0},
+                    'neutral': {'must_notify_km': 25, 'never_notify_km': 100, 'threat_multiplier': 1.0},
+                }
+            },
+            'role_modifiers': {}
         }
-        return _threat_multipliers_cache
+        return _threat_thresholds_cache
     
     # Load from YAML
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     
-    # Extract threat_multiplier for each entity type
-    multipliers = {}
+    _threat_thresholds_cache = config
+    return config
+
+
+def get_distance_thresholds(
+    entity_type: str,
+    classification: str
+) -> Tuple[float, float, float]:
+    """
+    Get distance thresholds for entity type and classification from YAML.
+    
+    Args:
+        entity_type: Type of entity (e.g., 'aircraft', 'tank')
+        classification: Classification (e.g., 'hostile', 'friendly')
+        
+    Returns:
+        Tuple of (must_notify_km, never_notify_km, threat_multiplier)
+    """
+    config = _load_threat_thresholds()
     thresholds = config.get('thresholds', {})
     
-    for entity_type, classifications in thresholds.items():
-        # Get multiplier from any classification (they should all be the same)
-        for classification_data in classifications.values():
-            if isinstance(classification_data, dict) and 'threat_multiplier' in classification_data:
-                multipliers[entity_type] = classification_data['threat_multiplier']
-                break
+    # Try exact entity type first
+    entity_thresholds = thresholds.get(entity_type, {})
+    classification_data = entity_thresholds.get(classification, None)
     
-    # Add default if not present
-    if 'default' not in multipliers:
-        multipliers['default'] = 1.0
+    # Fallback to default if not found
+    if not classification_data:
+        default_thresholds = thresholds.get('default', {})
+        classification_data = default_thresholds.get(classification, {
+            'must_notify_km': 100,
+            'never_notify_km': 300,
+            'threat_multiplier': 1.0
+        })
     
-    _threat_multipliers_cache = multipliers
-    return multipliers
+    return (
+        classification_data.get('must_notify_km', 100),
+        classification_data.get('never_notify_km', 300),
+        classification_data.get('threat_multiplier', 1.0)
+    )
 
 
-def get_threat_multiplier(entity_type: str) -> float:
+def get_threat_multiplier(entity_type: str, classification: str = 'hostile') -> float:
     """
-    Get threat multiplier for entity type.
+    Get threat multiplier for entity type and classification from YAML.
     
     Args:
         entity_type: Type of entity
+        classification: Classification (default: 'hostile')
         
     Returns:
         Threat multiplier (higher = more threatening)
     """
-    multipliers = _load_threat_multipliers()
-    return multipliers.get(entity_type, multipliers.get('default', 1.0))
+    _, _, multiplier = get_distance_thresholds(entity_type, classification)
+    return multiplier
 
 
 # ==================== SPEED-BASED THREAT ASSESSMENT ====================
@@ -206,6 +236,7 @@ def get_obvious_threat_level(
     """
     Deterministic threat level for obvious cases (no LLM needed).
     
+    Uses thresholds from threat_thresholds.yaml for intelligent decisions.
     Returns None if ambiguous (LLM should decide).
     
     Args:
@@ -220,8 +251,11 @@ def get_obvious_threat_level(
     if entity.classification == "friendly":
         return "none"  # Friendly = no threat
     
-    if entity.classification == "neutral" and distance_to_nearest_friendly_km and distance_to_nearest_friendly_km > 100:
-        return "none"  # Neutral far away = no threat
+    # Use YAML thresholds for neutral entities
+    if entity.classification == "neutral" and distance_to_nearest_friendly_km:
+        _, never_notify_km, _ = get_distance_thresholds(entity.entity_type, "neutral")
+        if distance_to_nearest_friendly_km > never_notify_km:
+            return "none"  # Neutral far away (beyond never_notify threshold) = no threat
     
     # ============ OBVIOUS CRITICAL THREATS ============
     
@@ -229,24 +263,50 @@ def get_obvious_threat_level(
     if entity.classification == "hostile" and entity.entity_type == "missile":
         return "critical"
     
-    # Hostile aircraft very close = CRITICAL
-    if (entity.classification == "hostile" and 
-        entity.entity_type in ["aircraft", "fighter", "bomber"] and
-        distance_to_nearest_friendly_km and distance_to_nearest_friendly_km < 10):
-        return "critical"
+    # Use YAML thresholds for hostile aircraft proximity decisions
+    if entity.classification == "hostile" and entity.entity_type in ["aircraft", "fighter", "bomber"]:
+        if distance_to_nearest_friendly_km:
+            must_notify_km, _, _ = get_distance_thresholds(entity.entity_type, "hostile")
+            
+            # Very close (< 10km) = CRITICAL
+            if distance_to_nearest_friendly_km < 10:
+                return "critical"
+            
+            # Within must_notify range = HIGH
+            if distance_to_nearest_friendly_km < must_notify_km * 0.5:  # Within half of must_notify
+                return "high"
     
     # High-speed unknown approaching = HIGH (could be hostile)
     if (entity.classification == "unknown" and
         entity.speed_kmh and entity.speed_kmh > 700 and
-        distance_to_nearest_friendly_km and distance_to_nearest_friendly_km < 50):
-        return "high"
+        distance_to_nearest_friendly_km):
+        
+        must_notify_km, _, _ = get_distance_thresholds(entity.entity_type, "unknown")
+        if distance_to_nearest_friendly_km < must_notify_km:
+            return "high"
     
     # ============ OBVIOUS HIGH THREATS ============
     
-    # Hostile forces close to friendlies
-    if (entity.classification == "hostile" and
-        distance_to_nearest_friendly_km and distance_to_nearest_friendly_km < 30):
-        return "high"
+    # Hostile forces close to friendlies - use YAML thresholds
+    if entity.classification == "hostile" and distance_to_nearest_friendly_km:
+        must_notify_km, _, _ = get_distance_thresholds(entity.entity_type, "hostile")
+        
+        # Within must_notify threshold = HIGH threat
+        if distance_to_nearest_friendly_km < must_notify_km * 0.3:  # Within 30% of must_notify
+            return "high"
+    
+    # ============ OBVIOUS FAR-AWAY (LOW or NONE) ============
+    
+    # Use YAML never_notify threshold
+    if distance_to_nearest_friendly_km:
+        _, never_notify_km, _ = get_distance_thresholds(entity.entity_type, entity.classification)
+        
+        # Beyond never_notify threshold = no significant threat
+        if distance_to_nearest_friendly_km > never_notify_km:
+            if entity.classification == "hostile":
+                return "low"  # Hostile but very far
+            else:
+                return "none"  # Unknown/neutral and far away
     
     # ============ AMBIGUOUS CASES ============
     
@@ -262,6 +322,7 @@ def calculate_threat_score(
     """
     Calculate numeric threat score (0-100) for prioritization.
     
+    Uses threat_multiplier from YAML config.
     Higher score = more threatening.
     
     Args:
@@ -283,22 +344,27 @@ def calculate_threat_score(
     }
     score += classification_scores.get(entity.classification, 30)
     
-    # ============ ENTITY TYPE MULTIPLIER ============
-    type_multiplier = get_threat_multiplier(entity.entity_type)
+    # ============ ENTITY TYPE MULTIPLIER FROM YAML ============
+    type_multiplier = get_threat_multiplier(entity.entity_type, entity.classification)
     score *= type_multiplier
     
-    # ============ DISTANCE PENALTY ============
-    # Closer = higher threat
-    if distance_to_nearest_friendly_km < 10:
-        distance_multiplier = 2.0  # Very close
-    elif distance_to_nearest_friendly_km < 50:
-        distance_multiplier = 1.5  # Close
-    elif distance_to_nearest_friendly_km < 100:
-        distance_multiplier = 1.2  # Moderate
-    elif distance_to_nearest_friendly_km < 200:
-        distance_multiplier = 1.0  # Far
+    # ============ DISTANCE PENALTY USING YAML THRESHOLDS ============
+    # Use must_notify_km and never_notify_km for intelligent distance scaling
+    must_notify_km, never_notify_km, _ = get_distance_thresholds(
+        entity.entity_type,
+        entity.classification
+    )
+    
+    if distance_to_nearest_friendly_km < must_notify_km * 0.5:
+        distance_multiplier = 2.0  # Very close (within half of must_notify)
+    elif distance_to_nearest_friendly_km < must_notify_km:
+        distance_multiplier = 1.5  # Close (within must_notify range)
+    elif distance_to_nearest_friendly_km < never_notify_km:
+        distance_multiplier = 1.0  # Moderate (between thresholds)
+    elif distance_to_nearest_friendly_km < never_notify_km * 1.5:
+        distance_multiplier = 0.7  # Far (beyond never_notify)
     else:
-        distance_multiplier = 0.5  # Very far
+        distance_multiplier = 0.3  # Very far
     
     score *= distance_multiplier
     
@@ -366,6 +432,34 @@ def get_entity_threat_category(entity_type: str) -> str:
         return "other"
 
 
+def get_threshold_info(entity_type: str, classification: str) -> Dict[str, Any]:
+    """
+    Get complete threshold information for an entity type and classification.
+    
+    Useful for logging and debugging.
+    
+    Args:
+        entity_type: Type of entity
+        classification: Classification
+        
+    Returns:
+        Dictionary with must_notify_km, never_notify_km, threat_multiplier, reasoning
+    """
+    config = _load_threat_thresholds()
+    thresholds = config.get('thresholds', {})
+    
+    # Try exact entity type first
+    entity_thresholds = thresholds.get(entity_type, {})
+    classification_data = entity_thresholds.get(classification, None)
+    
+    # Fallback to default
+    if not classification_data:
+        default_thresholds = thresholds.get('default', {})
+        classification_data = default_thresholds.get(classification, {})
+    
+    return classification_data
+
+
 # ==================== TESTING ====================
 
 if __name__ == "__main__":
@@ -373,11 +467,28 @@ if __name__ == "__main__":
     from src.models import Location
     
     print("\n" + "=" * 70)
-    print("THREAT RULES TESTING")
+    print("THREAT RULES TESTING (Enhanced with YAML)")
     print("=" * 70 + "\n")
     
+    # Test 0: Show loaded thresholds
+    print("Test 0: YAML Configuration Loading")
+    print("-" * 70)
+    config = _load_threat_thresholds()
+    print(f"Loaded thresholds for {len(config.get('thresholds', {}))} entity types")
+    print(f"Loaded {len(config.get('role_modifiers', {}))} role modifiers")
+    
+    # Show example thresholds
+    for entity_type in ['aircraft', 'missile', 'tank']:
+        for classification in ['hostile', 'friendly']:
+            info = get_threshold_info(entity_type, classification)
+            print(f"\n{entity_type} ({classification}):")
+            print(f"  must_notify: {info.get('must_notify_km')}km")
+            print(f"  never_notify: {info.get('never_notify_km')}km")
+            print(f"  multiplier: {info.get('threat_multiplier')}")
+    
     # Test 1: Hostile missile (should be CRITICAL)
-    print("Test 1: Hostile missile")
+    print("\n\nTest 1: Hostile missile")
+    print("-" * 70)
     missile = EntityCOP(
         entity_id="missile_001",
         entity_type="missile",
@@ -400,6 +511,7 @@ if __name__ == "__main__":
     
     # Test 2: Unknown slow aircraft far away
     print("\nTest 2: Unknown slow aircraft far away")
+    print("-" * 70)
     aircraft = EntityCOP(
         entity_id="aircraft_002",
         entity_type="aircraft",
@@ -412,16 +524,19 @@ if __name__ == "__main__":
         speed_kmh=250
     )
     
-    threat_level = get_obvious_threat_level(aircraft, distance_to_nearest_friendly_km=300)
-    threat_score = calculate_threat_score(aircraft, distance_to_nearest_friendly_km=300)
-    
-    print(f"  Should assess: {should_assess_threat(aircraft)}")
-    print(f"  Threat level: {threat_level} (None = LLM should decide)")
-    print(f"  Threat score: {threat_score}")
-    print(f"  Expected: None (ambiguous), score ~30-50")
+    # Test at different distances
+    for distance in [50, 200, 400]:
+        threat_level = get_obvious_threat_level(aircraft, distance_to_nearest_friendly_km=distance)
+        threat_score = calculate_threat_score(aircraft, distance_to_nearest_friendly_km=distance)
+        
+        must_notify, never_notify, _ = get_distance_thresholds("aircraft", "unknown")
+        print(f"\n  Distance: {distance}km (must_notify: {must_notify}km, never_notify: {never_notify}km)")
+        print(f"  Threat level: {threat_level}")
+        print(f"  Threat score: {threat_score}")
     
     # Test 3: Friendly tank
-    print("\nTest 3: Friendly tank")
+    print("\n\nTest 3: Friendly tank")
+    print("-" * 70)
     tank = EntityCOP(
         entity_id="tank_003",
         entity_type="tank",

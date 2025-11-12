@@ -1,15 +1,6 @@
 {
   "pending_review_items": [],
-  "human_decisions": [
-    {
-      "item_id": "threat_radar_distant_01_HOSTILE_FAR_001_1762980772",
-      "decision": "approve",
-      "comments": "Auto-approved after 300s timeout",
-      "reviewer_id": "system_timeout",
-      "timestamp": "2025-11-12T20:57:52.463773+00:00",
-      "auto_approved": true
-    }
-  ],
-  "last_updated": "2025-11-12T20:57:52.463773+00:00",
+  "human_decisions": [],
+  "last_updated": "2025-11-12T22:18:49.186362+00:00",
   "pipeline_active": true
 }
