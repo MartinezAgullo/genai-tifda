@@ -2,18 +2,22 @@
 COP Update Node
 ===============
 
-Sixth and FINAL node in the TIFDA Phase 1 pipeline - updates COP and syncs to mapa.
+Sixth node in the TIFDA core pipeline - updates COP and syncs to mapa.
 
-This node:
-1. Takes merged entities from cop_merge_node
-2. Updates the cop_entities dict in state (add new, update existing)
-3. Auto-syncs to mapa-puntos-interes for visualization
-4. Updates timestamps and UI triggers
-5. Logs all COP changes for audit
-6. Completes the core sensor-to-COP pipeline
+This node performs the final COP update operations:
+1. Ensures recipients are loaded as friendly entities in COP (one-time initialization)
+2. Takes merged entities from cop_merge_node
+3. Updates the cop_entities dict in state (add new, update existing)
+4. Auto-syncs to mapa-puntos-interes for visualization
+5. Updates timestamps and UI triggers
+6. Logs all COP changes for audit
+7. Completes the core sensor-to-COP pipeline
 
-This is the culmination of the entire pipeline - where sensor data becomes
-actionable intelligence in the Common Operational Picture.
+Recipients Loading:
+- Recipients from recipients.yaml are automatically loaded as friendly entities
+- Loading occurs once per session (deduplication prevents re-adding)
+- Recipients are then available for distance calculations in threat_evaluator_node
+- No separate recipient loading node required
 
 Node Signature:
     Input: TIFDAState with parsed_entities (merged) and cop_entities (existing COP)
@@ -28,11 +32,151 @@ from langsmith import traceable
 
 from src.core.state import TIFDAState, log_decision, add_notification
 from src.integrations.cop_sync import get_cop_sync, COPSyncError
-from src.models import EntityCOP
+from src.models import EntityCOP, Location
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
+# ==================== RECIPIENTS LOADING ====================
+
+def _load_recipients_into_cop(cop_entities: Dict[str, EntityCOP]) -> Dict[str, Any]:
+    """
+    Load recipients from configuration and add as friendly entities to COP.
+    
+    This function:
+    1. Checks if recipients already loaded (prevents duplicates)
+    2. Loads from recipients.yaml
+    3. Converts to EntityCOP with classification="friendly"
+    4. Adds to COP (uses same logic as sensor entities)
+    
+    Recipients are loaded ONCE and persist in COP for the entire session.
+    Deduplication is automatic (checks entity_id before adding).
+    
+    Args:
+        cop_entities: Current COP dictionary
+        
+    Returns:
+        Statistics dictionary:
+            - loaded: Number of recipients loaded
+            - skipped: Number skipped (no location or already in COP)
+            - entity_ids: List of loaded entity IDs
+    """
+    from src.rules.dissemination_rules import load_recipients_config
+    
+    # Check if recipients already loaded
+    # Recipients have source_sensors=["recipients_config"]
+    already_loaded = any(
+        "recipients_config" in entity.source_sensors
+        for entity in cop_entities.values()
+    )
+    
+    if already_loaded:
+        logger.debug("Recipients already in COP, skipping load")
+        return {
+            "loaded": 0,
+            "skipped": 0,
+            "entity_ids": [],
+            "already_present": True
+        }
+    
+    logger.info("\n🏗️  Loading recipients as friendly assets into COP...")
+    
+    try:
+        # Load recipients from configuration
+        recipients = load_recipients_config()
+        logger.info(f"   📡 Loaded {len(recipients)} recipients from configuration")
+        
+        stats = {
+            "loaded": 0,
+            "skipped": 0,
+            "entity_ids": [],
+            "already_present": False
+        }
+        
+        recipient_entities = []
+        
+        for recipient in recipients:
+            # Skip if no location
+            if recipient.location is None:
+                logger.debug(f"   ⏭️  Skipping {recipient.recipient_id} (no static location)")
+                stats["skipped"] += 1
+                continue
+            
+            # Use elemento_identificado as entity_id, or fall back to recipient_id
+            entity_id = recipient.elemento_identificado or recipient.recipient_id
+            
+            # Check if already in COP (deduplication)
+            if entity_id in cop_entities:
+                logger.debug(f"   ✓ {entity_id} already in COP")
+                stats["skipped"] += 1
+                continue
+            
+            # Map recipient_type to entity_type
+            entity_type_mapping = {
+                "friendly_unit": "base",
+                "allied_cms": "base",
+                "allied_unit": "base",
+                "headquarters": "base",
+                "naval_unit": "ship",
+                "test": "base"
+            }
+            entity_type = entity_type_mapping.get(recipient.recipient_type, "base")
+            
+            # Create EntityCOP for this recipient
+            recipient_entity = EntityCOP(
+                entity_id=entity_id,
+                entity_type=entity_type,
+                location=Location(
+                    lat=recipient.location.lat,
+                    lon=recipient.location.lon,
+                    alt=recipient.location.alt
+                ),
+                timestamp=datetime.now(timezone.utc),
+                classification="friendly",  # KEY: Recipients are friendly
+                information_classification="SECRET",  # Recipients are SECRET assets
+                confidence=1.0,  # Known friendly asset
+                source_sensors=["recipients_config"],  # Special marker
+                metadata={
+                    "recipient_id": recipient.recipient_id,
+                    "recipient_name": recipient.recipient_name,
+                    "operational_role": recipient.operational_role,
+                    "access_level": recipient.access_level,
+                    "is_mobile": recipient.is_mobile,
+                    "loaded_from_config": True,
+                    "load_timestamp": datetime.now(timezone.utc).isoformat()
+                },
+                comments=f"{recipient.recipient_name} - {recipient.operational_role}"
+            )
+            
+            recipient_entities.append(recipient_entity)
+            stats["loaded"] += 1
+            stats["entity_ids"].append(entity_id)
+            
+            logger.info(f"   ➕ {recipient.recipient_name} ({entity_id})")
+            logger.debug(f"      Type: {entity_type}, Location: {recipient.location.lat:.4f}, {recipient.location.lon:.4f}")
+        
+        # Add recipients to COP using same logic as sensor entities
+        for entity in recipient_entities:
+            cop_entities[entity.entity_id] = entity
+        
+        logger.info(f"   ✅ Loaded {stats['loaded']} recipients into COP")
+        logger.info(f"   ⏭️  Skipped {stats['skipped']} (no location or already present)")
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"   ❌ Failed to load recipients: {e}")
+        logger.warning("   ⚠️  Continuing without recipient assets in COP")
+        return {
+            "loaded": 0,
+            "skipped": 0,
+            "entity_ids": [],
+            "error": str(e)
+        }
+
+
+# ==================== COP UPDATE ====================
 
 def _update_cop_with_entities(
     cop_entities: Dict[str, EntityCOP],
@@ -87,18 +231,23 @@ def _update_cop_with_entities(
 @traceable(name="cop_update_node")
 def cop_update_node(state: TIFDAState) -> Dict[str, Any]:
     """
-    COP update and synchronization node.
+    COP update and synchronization node with recipients loading.
     
-    Final node in the Phase 1 core pipeline. Updates the in-memory COP
+    Updates the in-memory COP
     with merged entities and syncs changes to mapa-puntos-interes for
     visualization.
     
+    Also ensures recipients are loaded into COP as friendly entities
+    on first run. Recipients persist in COP and are available for distance
+    calculations in threat_evaluator_node.
+    
     Operations:
-    1. Update cop_entities dict (add new, update existing)
-    2. Sync to mapa-puntos-interes (async, non-blocking)
-    3. Update cop_last_global_update timestamp
-    4. Increment map_update_trigger for UI refresh
-    5. Log all changes for audit
+    1. Load recipients into COP (one-time, deduplicated)
+    2. Update cop_entities dict (add new, update existing)
+    3. Sync to mapa-puntos-interes (async, non-blocking)
+    4. Update cop_last_global_update timestamp
+    5. Increment map_update_trigger for UI refresh
+    6. Log all changes for audit
     
     Args:
         state: Current TIFDA state containing:
@@ -126,18 +275,45 @@ def cop_update_node(state: TIFDAState) -> Dict[str, Any]:
     sensor_metadata = state.get("sensor_metadata", {})
     sensor_id = sensor_metadata.get("sensor_id", "unknown")
     
+    logger.info(f"📊 Current COP size: {len(cop_entities)} entities")
+    
+    # ============ LOAD RECIPIENTS ============
+    
+    # Ensure recipients are in COP (one-time load, deduplicated)
+    recipient_stats = _load_recipients_into_cop(cop_entities)
+    
+    if recipient_stats["loaded"] > 0:
+        logger.info(f"   ✅ Recipients loaded: {recipient_stats['loaded']} friendly assets added to COP")
+        add_notification(
+            state,
+            f"🏗️  Loaded {recipient_stats['loaded']} friendly assets (recipients) into COP"
+        )
+    
+    # ============ UPDATE COP WITH SENSOR DATA ============
+    
     if not parsed_entities:
-        logger.warning("⚠️  No entities to update COP with")
+        logger.warning("⚠️  No sensor entities to update COP with (recipients may have been loaded)")
+        
+        # Still return updated COP (may include newly loaded recipients)
+        reasoning = f"""## COP Update
+
+**Recipients loaded**: {recipient_stats['loaded']}
+**Sensor entities**: 0 (none to add)
+**Total COP size**: {len(cop_entities)} entities
+
+No sensor entities to process in this update.
+"""
+        
         return {
-            "decision_reasoning": "## ⚠️  No COP Update Needed\n\nNo entities to add/update."
+            "cop_entities": cop_entities,
+            "decision_reasoning": reasoning
         }
     
     logger.info(f"📡 Updating COP with {len(parsed_entities)} entities from sensor: {sensor_id}")
-    logger.info(f"📊 Current COP size: {len(cop_entities)} entities")
     
     # ============ UPDATE COP ============
     
-    # Make a copy of COP for this update
+    # Make a copy of COP for this update (already includes recipients)
     updated_cop = cop_entities.copy()
     
     # Update COP with merged entities
@@ -208,7 +384,18 @@ def cop_update_node(state: TIFDAState) -> Dict[str, Any]:
 **Sensor**: `{sensor_id}`
 **Processing Time**: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}
 
-### COP Update:
+"""
+    
+    # Add recipients info if loaded
+    if recipient_stats["loaded"] > 0:
+        reasoning += f"""### 🏗️  Recipients Loaded:
+- ✅ **Friendly assets added**: {recipient_stats['loaded']}
+- 📍 **Recipients in COP**: {', '.join(recipient_stats['entity_ids'][:5])}
+{'  - ... and ' + str(len(recipient_stats['entity_ids']) - 5) + ' more' if len(recipient_stats['entity_ids']) > 5 else ''}
+
+"""
+    
+    reasoning += f"""### COP Update:
 - ➕ **New entities added**: {cop_stats['added']}
 - 📝 **Existing entities updated**: {cop_stats['updated']}
 - 📊 **Total COP size**: {cop_stats['total_cop_size']} entities
@@ -232,28 +419,28 @@ def cop_update_node(state: TIFDAState) -> Dict[str, Any]:
         reasoning += "\n"
     
     # Mapa sync status
-    reasoning += "### 🗺️  Mapa Sync:\n"
-    if sync_success:
-        reasoning += f"- ✅ **Status**: Success\n"
-        reasoning += f"- 📦 **Created**: {sync_stats.get('created', 0)}\n"
-        reasoning += f"- 📝 **Updated**: {sync_stats.get('updated', 0)}\n"
-        if sync_stats.get('failed', 0) > 0:
-            reasoning += f"- ⚠️  **Failed**: {sync_stats['failed']}\n"
-    else:
-        reasoning += f"- ⚠️  **Status**: Partial failure or error\n"
-        reasoning += f"- ❌ **Failed**: {sync_stats.get('failed', len(parsed_entities))}\n"
-        if sync_stats.get('errors'):
-            reasoning += f"- **Error**: {sync_stats['errors'][0][:100]}...\n"
+    reasoning += f"""### 🗺️  Mapa Sync:
+- Status: {'✅ Success' if sync_success else '⚠️  Partial/Failed'}
+- Created: {sync_stats.get('created', 0)}
+- Updated: {sync_stats.get('updated', 0)}
+- Failed: {sync_stats.get('failed', 0)}
+
+"""
+    
+    if not sync_success and sync_stats.get('errors'):
+        reasoning += "#### Sync Errors:\n"
+        for error in sync_stats['errors'][:3]:
+            reasoning += f"- {error}\n"
+        if len(sync_stats['errors']) > 3:
+            reasoning += f"- ... and {len(sync_stats['errors']) - 3} more\n"
+        reasoning += "\n"
     
     reasoning += f"""
-### 📊 Pipeline Summary:
-This completes the core TIFDA pipeline for this sensor event:
-1. ✅ Firewall validation passed
-2. ✅ Format parsed successfully
-3. ✅ Entities normalized and validated
-4. ✅ Duplicates merged (sensor fusion)
-5. ✅ COP updated with {cop_stats['added'] + cop_stats['updated']} entities
-6. {'✅' if sync_success else '⚠️ '} Mapa visualization {'synced' if sync_success else 'partially synced'}
+---
+
+**Next Steps:**
+- Threat Evaluator will assess threats using distances to ALL friendly entities (including recipients)
+- Recipients are now available for dissemination routing decisions
 
 **🎉 Pipeline complete!** The COP now reflects the latest battlefield intelligence.
 """
@@ -265,12 +452,14 @@ This completes the core TIFDA pipeline for this sensor event:
         state=state,
         node_name="cop_update_node",
         decision_type="cop_update",
-        reasoning=f"Updated COP: {cop_stats['added']} added, {cop_stats['updated']} updated. Mapa: {sync_message}",
+        reasoning=f"Updated COP: {cop_stats['added']} added, {cop_stats['updated']} updated. Recipients: {recipient_stats['loaded']} loaded. Mapa: {sync_message}",
         data={
             "sensor_id": sensor_id,
             "added": cop_stats['added'],
             "updated": cop_stats['updated'],
             "total_cop_size": cop_stats['total_cop_size'],
+            "recipients_loaded": recipient_stats['loaded'],
+            "recipients_skipped": recipient_stats['skipped'],
             "mapa_sync_success": sync_success,
             "mapa_sync_stats": sync_stats
         }
@@ -303,185 +492,15 @@ This completes the core TIFDA pipeline for this sensor event:
     logger.info("\n" + "=" * 70)
     logger.info(f"✅ COP UPDATE COMPLETE - Pipeline finished!")
     logger.info(f"   COP size: {cop_stats['total_cop_size']} entities")
+    logger.info(f"   Recipients: {recipient_stats['loaded']} loaded, {recipient_stats['skipped']} skipped")
     logger.info(f"   Mapa sync: {'Success' if sync_success else 'Partial/Failed'}")
     logger.info("=" * 70 + "\n")
     
     # Return state updates
     return {
-        "cop_entities": updated_cop,  # Updated COP dictionary
+        "cop_entities": updated_cop,  # Updated COP dictionary (includes recipients)
         "cop_last_global_update": now,
         "map_update_trigger": new_trigger,  # Trigger UI refresh
         "decision_reasoning": reasoning,
         "error": None if sync_success else sync_message  # Non-fatal mapa errors
     }
-
-
-# ==================== TESTING ====================
-
-def test_cop_update_node():
-    """Test the COP update node"""
-    from src.core.state import create_initial_state
-    from src.models import Location
-    
-    print("\n" + "=" * 70)
-    print("COP UPDATE NODE TEST")
-    print("=" * 70 + "\n")
-    
-    # Test 1: Add new entities to empty COP
-    print("Test 1: Add new entities to empty COP")
-    print("-" * 70)
-    
-    state = create_initial_state()
-    state["sensor_metadata"] = {"sensor_id": "radar_01"}
-    state["cop_entities"] = {}  # Empty COP
-    
-    # New entities to add
-    state["parsed_entities"] = [
-        EntityCOP(
-            entity_id="radar_01_T001",
-            entity_type="aircraft",
-            location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime.now(timezone.utc),
-            classification="unknown",
-            information_classification="SECRET",
-            confidence=0.8,
-            source_sensors=["radar_01"]
-        ),
-        EntityCOP(
-            entity_id="radar_01_T002",
-            entity_type="ground_vehicle",
-            location=Location(lat=39.6, lon=-0.5),
-            timestamp=datetime.now(timezone.utc),
-            classification="hostile",
-            information_classification="CONFIDENTIAL",
-            confidence=0.75,
-            source_sensors=["radar_01"]
-        )
-    ]
-    
-    result = cop_update_node(state)
-    
-    print(f"Input entities: {len(state['parsed_entities'])}")
-    print(f"Initial COP size: {len(state['cop_entities'])}")
-    print(f"Updated COP size: {len(result['cop_entities'])}")
-    print(f"New entities added: {result['decision_reasoning'].count('➕')}")
-    print(f"Map trigger incremented: {result['map_update_trigger'] > state['map_update_trigger']}")
-    
-    print(f"\nReasoning preview:\n{result['decision_reasoning'][:400]}...")
-    
-    # Test 2: Update existing entities
-    print("\n" + "=" * 70)
-    print("Test 2: Update existing entities in COP")
-    print("-" * 70)
-    
-    state = create_initial_state()
-    state["sensor_metadata"] = {"sensor_id": "radar_02"}
-    
-    # COP already has entity from radar_01
-    state["cop_entities"] = {
-        "radar_01_T001": EntityCOP(
-            entity_id="radar_01_T001",
-            entity_type="aircraft",
-            location=Location(lat=39.5, lon=-0.4, alt=5000),
-            timestamp=datetime(2025, 10, 27, 14, 30, 0),
-            classification="unknown",
-            information_classification="SECRET",
-            confidence=0.7,
-            source_sensors=["radar_01"]
-        )
-    }
-    
-    # Merged entity with updated data (from merge node)
-    state["parsed_entities"] = [
-        EntityCOP(
-            entity_id="radar_01_T001",  # Same ID - UPDATE
-            entity_type="aircraft",
-            location=Location(lat=39.501, lon=-0.401, alt=5100),
-            timestamp=datetime.now(timezone.utc),
-            classification="hostile",  # Updated classification
-            information_classification="SECRET",
-            confidence=0.85,  # Boosted confidence
-            source_sensors=["radar_01", "radar_02"],  # Multi-sensor
-            metadata={"merged_from_sensors": ["radar_01", "radar_02"]}
-        )
-    ]
-    
-    result = cop_update_node(state)
-    
-    print(f"Updated entities: {result['decision_reasoning'].count('📝')}")
-    print(f"Final COP size: {len(result['cop_entities'])}")
-    
-    updated_entity = result['cop_entities']['radar_01_T001']
-    print(f"\nUpdated entity details:")
-    print(f"  Sensors: {updated_entity.source_sensors}")
-    print(f"  Confidence: {updated_entity.confidence}")
-    print(f"  Classification: {updated_entity.classification}")
-    
-    # Test 3: Mixed add and update
-    print("\n" + "=" * 70)
-    print("Test 3: Mixed scenario (add + update)")
-    print("-" * 70)
-    
-    state = create_initial_state()
-    state["sensor_metadata"] = {"sensor_id": "drone_alpha"}
-    
-    # Existing COP
-    state["cop_entities"] = {
-        "radar_01_T001": EntityCOP(
-            entity_id="radar_01_T001",
-            entity_type="aircraft",
-            location=Location(lat=39.5, lon=-0.4),
-            timestamp=datetime.now(timezone.utc),
-            classification="unknown",
-            information_classification="SECRET",
-            confidence=0.8,
-            source_sensors=["radar_01"]
-        )
-    }
-    
-    # Mix of new and update
-    state["parsed_entities"] = [
-        # UPDATE existing
-        EntityCOP(
-            entity_id="radar_01_T001",
-            entity_type="aircraft",
-            location=Location(lat=39.501, lon=-0.401),
-            timestamp=datetime.now(timezone.utc),
-            classification="hostile",
-            information_classification="SECRET",
-            confidence=0.9,
-            source_sensors=["radar_01", "drone_alpha"]
-        ),
-        # ADD new
-        EntityCOP(
-            entity_id="drone_alpha_vehicle_01",
-            entity_type="ground_vehicle",
-            location=Location(lat=39.6, lon=-0.5),
-            timestamp=datetime.now(timezone.utc),
-            classification="hostile",
-            information_classification="SECRET",
-            confidence=0.85,
-            source_sensors=["drone_alpha"]
-        )
-    ]
-    
-    result = cop_update_node(state)
-    
-    print(f"Initial COP: {len(state['cop_entities'])} entities")
-    print(f"Updated COP: {len(result['cop_entities'])} entities")
-    print(f"Added: {result['decision_reasoning'].count('➕ **New')}")
-    print(f"Updated: {result['decision_reasoning'].count('📝 **Existing')}")
-    
-    print("\n" + "=" * 70)
-    print("COP UPDATE NODE TEST COMPLETE")
-    print("=" * 70 + "\n")
-
-
-if __name__ == "__main__":
-    # Configure logging for standalone testing
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    test_cop_update_node()

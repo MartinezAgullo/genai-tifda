@@ -1,6 +1,29 @@
 {
-  "pending_review_items": [],
+  "pending_review_items": [
+    {
+      "item_id": "threat_radar_valencia_02_HOSTILE_FIGHTER_001_1762975040",
+      "item_type": "threat_assessment",
+      "threat_level": "critical",
+      "threat_source_id": "radar_valencia_02_HOSTILE_FIGHTER_001",
+      "confidence": 0.95,
+      "reasoning": "Rule-based assessment: hostile aircraft at 2km from nearest friendly \u2192 CRITICAL. Fast deterministic evaluation based on threat classification matrix.",
+      "affected_entities": [
+        "base_alpha",
+        "command_post_001",
+        "naval_tf_charlie",
+        "test_recipient"
+      ],
+      "distances_to_affected_km": {
+        "base_alpha": 7.096551997504905,
+        "command_post_001": 2.405564645542809,
+        "naval_tf_charlie": 12.25946126940755,
+        "test_recipient": 4.022303063217942
+      },
+      "timestamp": "2025-11-12T19:17:20.481231+00:00",
+      "added_at": "2025-11-12T19:17:20.484209+00:00"
+    }
+  ],
   "human_decisions": [],
-  "last_updated": "2025-11-10T17:49:42.693635+00:00",
+  "last_updated": "2025-11-12T19:17:20.484683+00:00",
   "pipeline_active": true
 }
