@@ -31,6 +31,12 @@ class SensorMessage(BaseModel):
         description="Sensor data (can be inline JSON or contain file references)"
     )
     
+    # Optional metadata
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional metadata about the sensor reading (e.g., quality metrics, source info)"
+    )
+    
     # Helper methods
     def has_file_references(self) -> bool:
         """
