@@ -18,6 +18,7 @@ recipients:
     recipient_name: "Base Alpha - Air Defense"
     recipient_type: "friendly_unit"
     access_level: "secret_access"  # Can receive up to SECRET
+    country: "Spain"  # Owner country for mapa visualization
     
     # Position (static base)
     location:
@@ -54,6 +55,7 @@ recipients:
     recipient_name: "Command Post 001"
     recipient_type: "friendly_unit"
     access_level: "top_secret_access"
+    country: "Spain"  # Owner country for mapa visualization
     
     location:
       lat: 39.5174673838
@@ -83,6 +85,7 @@ recipients:
     recipient_name: "Mobile Unit Bravo - Ground Forces"
     recipient_type: "friendly_unit"
     access_level: "confidential_access"
+    country: "Spain"  # Owner country for mapa visualization
     
     # Mobile unit - query position from mapa-puntos-interes
     location: null
@@ -114,6 +117,7 @@ recipients:
     recipient_name: "Mobile Unit Charlie - Ground Forces"
     recipient_type: "friendly_unit"
     access_level: "confidential_access"
+    country: "Spain"  # Owner country for mapa visualization
     
     # Mobile unit - query position from mapa-puntos-interes
     location:
@@ -148,6 +152,7 @@ recipients:
     recipient_name: "Naval Task Force Charlie"
     recipient_type: "friendly_unit"
     access_level: "secret_access"
+    country: "Spain"  # Owner country for mapa visualization
     
     location:
       lat: 39.4784525
@@ -182,6 +187,7 @@ recipients:
     recipient_name: "UK Allied Battle Management System"
     recipient_type: "allied_cms"
     access_level: "secret_access"  # Coalition SECRET
+    country: "United Kingdom"  # Allied nation
     
     location: null  # Unknown/remote
     is_mobile: false
@@ -213,6 +219,7 @@ recipients:
     recipient_name: "French Air Defense Liaison"
     recipient_type: "allied_unit"
     access_level: "confidential_access"
+    country: "France"  # Allied nation
     
     location: null
     is_mobile: false
@@ -247,6 +254,7 @@ recipients:
     recipient_name: "Strategic Headquarters"
     recipient_type: "headquarters"
     access_level: "top_secret_access"
+    country: "Spain"  # National HQ
     
     location: null  # Remote/classified
     is_mobile: false
@@ -281,6 +289,7 @@ recipients:
     recipient_name: "Test Recipient (Development)"
     recipient_type: "test"
     access_level: "unclassified_access"
+    country: "Unknown"  # Test entity
     
     location:
       lat: 39.48350249079

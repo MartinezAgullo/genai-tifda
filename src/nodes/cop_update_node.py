@@ -143,6 +143,7 @@ def _load_recipients_into_cop(cop_entities: Dict[str, EntityCOP]) -> Dict[str, A
                     "operational_role": recipient.operational_role,
                     "access_level": recipient.access_level,
                     "is_mobile": recipient.is_mobile,
+                    "country": getattr(recipient, "country", "Unknown"),  # For mapa visualization
                     "loaded_from_config": True,
                     "load_timestamp": datetime.now(timezone.utc).isoformat()
                 },

@@ -36,6 +36,10 @@ Prerequisites:
     1. Recipients configured in config/recipients.yaml
     2. Thresholds configured in config/threat_thresholds.yaml
     3. MQTT broker running (optional, tests work without)
+
+To delete the recipients from TIFDA UI after tests, run:
+node delete-tifda-recipients.js
+
 """
 
 import logging
