@@ -85,6 +85,9 @@ A mocked radar signal message is sent with test_ui_hilt_radar.py to start the TI
 ![HITL UI](assets/images/tifda-ui-hilt.png)
 
 
+![mapa-puntos-interes-ui](https://github.com/MartinezAgullo/mapa-puntos-interes/blob/main/public/images/map-with-app6.png}
+
+
 ## ⚙️ Configuration
 
 Edit `src/core/init_config.py` to customize:
@@ -110,6 +113,9 @@ config.auto_approve_timeout_seconds = 300
 ```bash
 tifda/
 .
+├── config
+│   ├── recipients.yaml         # Entities to be notified of threads
+│   └── threat_thresholds.yaml  # Distance thresholds to rule-based decisions
 ├── data
 │   └── shared_state.json       # HITL state persistence
 ├── mqtt
@@ -156,6 +162,10 @@ tifda/
 │   │   ├── manual_parser.py
 │   │   ├── parser_factory.py
 │   │   └── radio_parser.py
+│   ├── rules                       # Deterministic rule engine
+│   │   ├── threat_rules.py         # Is the threat dangerous?
+│   │   ├── dissemination_rules.py  # Who should we tell?
+│   │   └── classification_rules.py # Do the receivers have the clearance?
 │   ├── security
 │   │   ├── REAMDE.md
 │   │   └── firewall.py         # Injection detection
@@ -178,7 +188,8 @@ tifda/
     ├── test_parsers.py
     ├── test_pipeline_visualization.py
     ├── test_radar.py
-    └── test_ui_hilt_radar.py   # HITL integration
+    ├── test_ui_hilt_radar.py   # HITL integration
+    └── test_phase5_dissemination.py # Comprhensive test
 ```
 
 
@@ -322,6 +333,8 @@ tifda/
 │  │    • Assess speed, heading, altitude (threat vectors)          │         │
 │  │    • Cross-reference with threat database                      │         │
 │  │    • Evaluate based on historical patterns                     │         │
+│  │    • Obvius scenario: Decision based on deterministic rules    │         │
+│  │    • Ambiguos scenario: Let the LLM decide wether or not notify│         │
 │  │                                                                │         │
 │  │  Output:                                                       │         │
 │  │    • ThreatAssessment per entity                               │         │
