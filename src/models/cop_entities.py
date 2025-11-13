@@ -76,67 +76,84 @@ class EntityCOP(BaseModel):
 
     def to_mapa_punto_interes(self) -> Dict[str, Any]:
         """
-        Convert EntityCOP to mapa-puntos-interes format
+        Convert EntityCOP to mapa-puntos-interes format (NEW API v2)
         
         Returns:
             Dict ready for POST /api/puntos
+            
+        Note:
+            Uses new lowercase enum categories and alliance field.
+            Removed deprecated fields: ciudad, provincia, direccion, telefono, email, website
         """
-        # Map TIFDA entity_type to mapa categoria
+        # Map TIFDA entity_type to NEW mapa lowercase categoria enum
+        # Valid categories: missile, fighter, bomber, aircraft, helicopter, uav,
+        #                  tank, artillery, ship, destroyer, submarine, ground_vehicle,
+        #                  apc, infantry, person, base, building, infrastructure, default
         entity_type_to_categoria = {
-            "aircraft": "Avion",
-            "fighter": "Avion",
-            "bomber": "Avion",
-            "transport": "Avion",
-            "helicopter": "Avion",
-            "uav": "Drone",
-            "missile": "Otro",
-            "air_unknown": "Avion",
-            "tank": "Tanque",
-            "apc": "Vehiculo",
-            "ifv": "Vehiculo",
-            "artillery": "Artilleria",
-            "infantry": "Infanteria",
-            "command_post": "Centro de Mando",
-            "radar_site": "Otro",
-            "infrastructure": "Otro",
-            "building": "Otro",
-            "bridge": "Otro",
-            "base": "BSM",
-            "ground_vehicle": "Vehiculo",
-            "ground_unknown": "Vehiculo",
-            "ship": "Otro",
-            "carrier": "Otro",
-            "destroyer": "Otro",
-            "frigate": "Otro",
-            "corvette": "Otro",
-            "patrol_boat": "Otro",
-            "submarine": "Otro",
-            "boat": "Otro",
-            "sea_unknown": "Otro",
-            "satellite": "Otro",
-            "cyber_node": "Otro",
-            "person": "Infanteria",
-            "event": "Otro",
-            "unknown": "Otro"
+            # Air entities
+            "aircraft": "aircraft",
+            "fighter": "fighter",
+            "bomber": "bomber",
+            "transport": "aircraft",
+            "helicopter": "helicopter",
+            "uav": "uav",
+            "missile": "missile",
+            "air_unknown": "aircraft",
+            
+            # Ground entities
+            "tank": "tank",
+            "apc": "apc",
+            "ifv": "apc",
+            "artillery": "artillery",
+            "infantry": "infantry",
+            "ground_vehicle": "ground_vehicle",
+            "ground_unknown": "ground_vehicle",
+            
+            # Sea entities
+            "ship": "ship",
+            "carrier": "ship",
+            "destroyer": "destroyer",
+            "frigate": "destroyer",
+            "corvette": "destroyer",
+            "patrol_boat": "ship",
+            "submarine": "submarine",
+            "boat": "ship",
+            "sea_unknown": "ship",
+            
+            # Infrastructure
+            "command_post": "base",
+            "radar_site": "base",
+            "infrastructure": "infrastructure",
+            "building": "building",
+            "bridge": "infrastructure",
+            "base": "base",
+            
+            # Other
+            "satellite": "default",
+            "cyber_node": "default",
+            "person": "person",
+            "event": "default",
+            "unknown": "default"
         }
         
-        categoria = entity_type_to_categoria.get(self.entity_type, "Otro")
-        valid_categorias = [
-            'Avion', 'Tanque', 'Drone', 'BSM', 'Centro de Mando',
-            'Unidad', 'Sub-Grupo Tactico', 'Peloton', 'Vehiculo',
-            'Artilleria', 'Infanteria', 'Otro'
-        ]
-
-        if categoria not in valid_categorias:
-            print(f"⚠️ Warning: category '{categoria}' not in valid list, using 'Otro'")
-            categoria = "Otro"
-            
+        # Get categoria with fallback to "default"
+        categoria = entity_type_to_categoria.get(self.entity_type, "default")
+        
+        # Map TIFDA classification to mapa alliance
+        # TIFDA: friendly, hostile, neutral, unknown
+        # Mapa:  friendly, hostile, neutral, unknown (same!)
+        alliance = self.classification  # Direct mapping
+        
+        # Determine country from metadata or use Unknown
+        country = self.metadata.get("country", "Unknown")
+        
+        # Build punto data with NEW schema
         punto_data = {
             "nombre": self.entity_id,
             "descripcion": self.comments or f"{self.entity_type} - {self.classification}",
             "categoria": categoria,
-            "ciudad": "Unknown",
-            "provincia": "Unknown",
+            "country": country,
+            "alliance": alliance,
             "elemento_identificado": self.entity_id,
             "activo": True,
             "tipo_elemento": self.entity_type,
@@ -146,6 +163,7 @@ class EntityCOP(BaseModel):
             "latitud": self.location.lat
         }
 
+        # Add optional altitude
         if self.location.alt is not None:
             punto_data['altitud'] = self.location.alt
             
