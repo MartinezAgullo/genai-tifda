@@ -85,9 +85,6 @@ A mocked radar signal message is sent with test_ui_hilt_radar.py to start the TI
 ![HITL UI](assets/images/tifda-ui-hilt.png)
 
 
-![mapa-puntos-interes-ui](https://github.com/MartinezAgullo/mapa-puntos-interes/blob/main/public/images/map-with-app6.png}
-
-
 ## ⚙️ Configuration
 
 Edit `src/core/init_config.py` to customize:
@@ -499,7 +496,8 @@ docker compose up -d
 node scripts/init-db.js
 npm run dev
 ```
-![View of the map application](assets/images/mapa-puntos-interes-front.png)
+<!-- ![View of the map application](assets/images/mapa-puntos-interes-front.png) -->
+![mapa-puntos-interes-ui](https://github.com/MartinezAgullo/mapa-puntos-interes/blob/main/public/images/map-with-app6.png)
 
 
 TIFDA automatically syncs entities via `cop_sync.py`.
