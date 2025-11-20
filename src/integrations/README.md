@@ -6,16 +6,16 @@ The system is built on two core components, both implemented as singletons.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    TIFDA (In-Memory COP)                 │
-│                   Source of Truth                        │
+│                    TIFDA (In-Memory COP)                │
+│                   Source of Truth                       │
 └─────────────────────┬───────────────────────────────────┘
                       │
                       │ COPSync
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│            mapa-puntos-interes                           │
-│         (Visualization + PostgreSQL)                     │
+│            mapa-puntos-interes                          │
+│         (Visualization + PostgreSQL)                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -25,6 +25,8 @@ The system is built on two core components, both implemented as singletons.
 
 ### 1. `MapaClient` (Low-Level HTTP)
 A robust **HTTP client** that handles direct communication with the `mapa-puntos-interes` REST API.
+
+![mapa-puntos-interes-ui](https://github.com/MartinezAgullo/mapa-puntos-interes/blob/main/public/images/map-with-app6.png)
 
 * **Key Features:** Provides full CRUD (Create/Read/Update/Delete) functionality, including powerful **Upsert** (create-or-update) and **Batch** operations.
 * **Reliability:** Implements automatic **retry logic** with exponential backoff for timeouts and server (5xx) errors, and uses **connection pooling** for efficiency.
@@ -43,6 +45,11 @@ The integration supports flexible deployment patterns:
 
 1.  **Real-time Sync (Recommended):** Entities are synced immediately after creation or update in the COP using `sync_batch` (fast and non-blocking).
 2.  **Periodic Full Sync:** A background thread pushes the entire COP state at regular intervals.
+
+
+![mapa-puntos-interes-hoz](https://github.com/MartinezAgullo/genai-tifda/tree/main/assets/images/map-with-app6.png)
+
+
 
 ---
 

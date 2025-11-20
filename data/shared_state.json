@@ -1,6 +1,31 @@
 {
   "pending_review_items": [],
-  "human_decisions": [],
-  "last_updated": "2025-11-13T13:34:33.108301+00:00",
+  "human_decisions": [
+    {
+      "item_id": "threat_radar_valencia_01_T001_HOSTILE_1763547727",
+      "decision": "approve",
+      "comments": "Auto-approved after 300s timeout",
+      "reviewer_id": "system_timeout",
+      "timestamp": "2025-11-19T10:27:12.244509+00:00",
+      "auto_approved": true
+    },
+    {
+      "item_id": "threat_radar_valencia_01_T002_UNKNOWN_1763547731",
+      "decision": "approve",
+      "comments": "Auto-approved after 300s timeout",
+      "reviewer_id": "system_timeout",
+      "timestamp": "2025-11-19T10:27:12.244509+00:00",
+      "auto_approved": true
+    },
+    {
+      "item_id": "threat_radar_test_01_MISSILE_001_1763556812",
+      "decision": "approve",
+      "comments": "Auto-approved after 300s timeout",
+      "reviewer_id": "system_timeout",
+      "timestamp": "2025-11-19T12:58:32.542969+00:00",
+      "auto_approved": true
+    }
+  ],
+  "last_updated": "2025-11-19T12:58:32.542969+00:00",
   "pipeline_active": true
 }
