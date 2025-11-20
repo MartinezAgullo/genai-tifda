@@ -47,7 +47,7 @@ The integration supports flexible deployment patterns:
 2.  **Periodic Full Sync:** A background thread pushes the entire COP state at regular intervals.
 
 
-![mapa-puntos-interes-hoz](https://github.com/MartinezAgullo/genai-tifda/tree/main/assets/images/map-with-app6.png)
+![mapa-puntos-interes-hoz](https://github.com/MartinezAgullo/genai-tifda/tree/main/assets/images/app_6_neutral.png)
 
 
 
