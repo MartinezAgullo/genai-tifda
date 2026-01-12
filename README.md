@@ -6,10 +6,12 @@ Its main functions are:
 
 1. Ingest multimodal data from diverse sources.
 
-2. Convert this data into a valid format to be used as Common Operational Picture (COP) by the Battle Management System (BMS). Note that this is not a real COP but a toy-model one. The COP is synchronised the one of an external service for mapping actors, [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes).
+2. Convert this data into a valid format to be used as Common Operational Picture (COP) by the Battle Management System (BMS). Note that this is not a real COP but a toy-model one. The COP is synchronised with an external service for mapping actors, [mapa-puntos-interes](https://github.com/MartinezAgullo/mapa-puntos-interes).
 
-3. Selectively distribute only the essential information to the relevant output actors, utilizing their specific formats. 
+3. Selectively distribute only the essential information to the relevant output actors, utilizing their specific formats.
 
+
+**Note:** Multimodal processing and COP map synchronization functionalities have been externalized to MCP Servers in the [CopForge](https://github.com/MartinezAgullo/copforge) project. 
 * * * * *
 
 ## ⚙️ Technical Details
@@ -50,7 +52,7 @@ touch .env
 2. **PostgreSQL** - Required for map backend
 3. **MQTT Broker** - Required for message dissemination
 
-<!-- The first step is to run the interactive map for the COP. It can be dowlodad from [here](https://github.com/MartinezAgullo/mapa-puntos-interes). -->
+<!-- The first step is to run the interactive map for the COP. It can be downloaded from [here](https://github.com/MartinezAgullo/mapa-puntos-interes). -->
 
 #### Complete Startup Sequence
 
@@ -79,7 +81,8 @@ uv run python -m src.ui.gradio_interface    # UI → http://localhost:7860
 # Terminal 5: Run TIFDA pipeline
 uv run python -m tests.test_ui_hilt_radar   # Send test radar data
 ```
-A mocked radar signal message is sent with test_ui_hilt_radar.py to start the TIFDA pipeline. 
+
+A mocked radar signal message is sent with test_ui_hilt_radar.py to start the TIFDA pipeline.
 
 
 ![HITL UI](assets/images/tifda-ui-hilt.png)
@@ -167,7 +170,7 @@ tifda/
 │   │   ├── REAMDE.md
 │   │   └── firewall.py         # Injection detection
 │   ├── tifda_app.py            # Main pipeline
-│   ├── tools                   # Multimodal processings
+│   ├── tools                   # Multimodal processing
 │   │   ├── audio_tools.py
 │   │   ├── document_tools.py
 │   │   └── image_tools.py
