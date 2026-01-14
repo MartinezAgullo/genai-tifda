@@ -27,3 +27,4 @@ Sensor → Firewall → Parser → Multimodal → Normalizer → Merge → COP U
 Threat Eval → Human Review → Router → Format → Transmission → ✅ Complete
 ```
 
+![mapa-puntos-interes-ui](https://github.com/MartinezAgullo/genai-tifda/blob/main/assets/diagrams/tifda-esquema.-nodo.png)
