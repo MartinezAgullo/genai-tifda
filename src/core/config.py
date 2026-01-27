@@ -141,7 +141,7 @@ class TIFDAConfig(BaseModel):
         description="Shared state file for pipeline <-> UI communication"
     )
     ui_refresh_interval: int = Field(5, description="UI polling interval in seconds")
-    ui_port: int = Field(7860, description="Gradio server port")
+    ui_port: int = Field(7864, description="Gradio server port")
     reviewer_id: str = Field("operator_alpha", description="Default reviewer ID")
     
     @field_validator("data_dir", "checkpoint_dir", "audit_log_dir", "shared_state_file")

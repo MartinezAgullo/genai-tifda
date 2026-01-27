@@ -64,7 +64,7 @@ def initialize_config():
     
     # ============ UI CONFIGURATION ============
     config.ui_refresh_interval = 5  # Poll shared state every N seconds
-    config.ui_port = 7860          # Gradio server port
+    config.ui_port = 7864          # Gradio server port
     
     # ============ INTEGRATION CONFIGURATION ============
     config.integrations.mapa_base_url = "http://localhost:3000"

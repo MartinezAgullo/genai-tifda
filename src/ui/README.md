@@ -82,7 +82,7 @@ See `src/core/init_config.py`:
 config.enable_human_review = True          # Enable/disable HITL
 config.auto_approve_timeout_seconds = 300  # Timeout (0 = wait forever)
 config.ui_refresh_interval = 5             # Poll interval (seconds)
-config.ui_port = 7860                      # Gradio port
+config.ui_port = 7864                      # Gradio port
 config.reviewer_id = "operator_alpha"      # Operator ID
 ```
 
